@@ -17,7 +17,8 @@ Once that file has runs, run days come from Runna and the schedule only places t
 To turn it on: in Runna open Profile > Settings > Calendar Sync and copy the link, then add it
 in this repo under Settings > Secrets and variables > Actions as a secret named `RUNNA_ICS_URL`.
 Run the workflow once from the Actions tab to sync straight away. The link stays secret, but
-`docs/runna.json` (session titles, dates and descriptions) is public like the rest of the site.
+`docs/runna.json` (session titles, dates, descriptions, and distance and time of finished runs) is public like the rest of the site. Location, laps and PBs are left out.
+Runs finished in Runna are added to the log automatically.
 
 The site is served by GitHub Pages from `docs/` on `main`. The log is saved on the device;
 use Setup > Save backup before switching phones.

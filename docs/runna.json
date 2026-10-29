@@ -1,0 +1,176 @@
+{
+ "changed": "2026-10-29T15:42:47Z",
+ "runs": [
+  {
+   "date": "2026-10-26",
+   "title": "Your First Walk Run",
+   "desc": "5 mins walking warm up\n\n3 reps of:\n• 3 mins at a conversational pace, 2 mins walking\n\n5 mins walking cool down",
+   "id": "COMPLETED_PLAN_WORKOUT-BEF94052-7FF6-4FB7-8F65-2CB321BDBEEB",
+   "link": "https://club.runna.com/n9Tx/activities?activityId=BEF94052-7FF6-4FB7-8F65-2CB321BDBEEB",
+   "done": true,
+   "dist": "2.75",
+   "time": "27.7"
+  },
+  {
+   "date": "2026-10-30",
+   "title": "Walk Run • 28m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 90s at a conversational pace, 90s walking\n• 4 mins at a conversational pace, 2 mins walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_1_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_1_WALK_RUN_1&weekIndex=1"
+  },
+  {
+   "date": "2026-11-02",
+   "title": "Walk Run • 28m",
+   "desc": "5 mins walking warm up\n\n6 reps of:\n• 2 mins at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_2_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_2_WALK_RUN_0&weekIndex=2"
+  },
+  {
+   "date": "2026-11-06",
+   "title": "Walk Run • 26m30s",
+   "desc": "5 mins walking warm up\n\n3 reps of:\n• 4 mins at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_2_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_2_WALK_RUN_1&weekIndex=2"
+  },
+  {
+   "date": "2026-11-09",
+   "title": "Walk Run • 27m30s",
+   "desc": "5 mins walking warm up\n\n3 reps of:\n• 60s at a conversational pace, 30s walking\n• 3 mins at a conversational pace, 60s walking\n\n60s at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_3_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_3_WALK_RUN_0&weekIndex=3"
+  },
+  {
+   "date": "2026-11-13",
+   "title": "Walk Run • 29m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 2 mins at a conversational pace, 60s walking\n• 5 mins at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_3_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_3_WALK_RUN_1&weekIndex=3"
+  },
+  {
+   "date": "2026-11-16",
+   "title": "Walk Run • 26m",
+   "desc": "5 mins walking warm up\n\n4 reps of:\n• 3 mins at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_4_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_4_WALK_RUN_0&weekIndex=4"
+  },
+  {
+   "date": "2026-11-20",
+   "title": "Walk Run • 26m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 60s at a conversational pace, 30s walking\n• 5 mins at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_4_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_4_WALK_RUN_1&weekIndex=4"
+  },
+  {
+   "date": "2026-11-23",
+   "title": "Walk Run • 28m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 3 mins at a conversational pace, 60s walking\n• 4 mins at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_5_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_5_WALK_RUN_0&weekIndex=5"
+  },
+  {
+   "date": "2026-11-27",
+   "title": "Walk Run • 27m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 7 mins at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_5_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_5_WALK_RUN_1&weekIndex=5"
+  },
+  {
+   "date": "2026-11-30",
+   "title": "Walk Run • 30m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 3 mins at a conversational pace, 60s walking\n• 5 mins at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_6_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_6_WALK_RUN_0&weekIndex=6"
+  },
+  {
+   "date": "2026-12-04",
+   "title": "Walk Run • 29m",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 8 mins at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_6_WALK_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_6_WALK_RUN_1&weekIndex=6"
+  },
+  {
+   "date": "2026-12-07",
+   "title": "Your First Continuous Run • 1km",
+   "desc": "Easy Run • 1km • \n\n5 mins walking warm up\n\n1km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_7_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_7_EASY_RUN_0&weekIndex=7"
+  },
+  {
+   "date": "2026-12-11",
+   "title": "Your First Distance Walk Run • 2km",
+   "desc": "Walk Run • 2km • \n\n5 mins walking warm up\n\n2 reps of:\n• 1km at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_7_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_7_WALK_RUN_0&weekIndex=7"
+  },
+  {
+   "date": "2026-12-14",
+   "title": "Continuous Run • 1km",
+   "desc": "Easy Run • 1km • \n\n5 mins walking warm up\n\n1km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_8_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_8_EASY_RUN_0&weekIndex=8"
+  },
+  {
+   "date": "2026-12-18",
+   "title": "Walk Run • 1.5km",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 750m at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_8_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_8_WALK_RUN_0&weekIndex=8"
+  },
+  {
+   "date": "2026-12-21",
+   "title": "Continuous Run • 2km",
+   "desc": "Easy Run • 2km • \n\n5 mins walking warm up\n\n2km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_9_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_9_EASY_RUN_0&weekIndex=9"
+  },
+  {
+   "date": "2026-12-25",
+   "title": "Walk Run • 3km",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 1.5km at a conversational pace, 90s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_9_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_9_WALK_RUN_0&weekIndex=9"
+  },
+  {
+   "date": "2026-12-28",
+   "title": "Continuous Run • 3km",
+   "desc": "Easy Run • 3km • \n\n5 mins walking warm up\n\n3km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_10_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_10_EASY_RUN_0&weekIndex=10"
+  },
+  {
+   "date": "2027-01-01",
+   "title": "Walk Run • 4km",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 2km at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_10_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_10_WALK_RUN_0&weekIndex=10"
+  },
+  {
+   "date": "2027-01-04",
+   "title": "Continuous Run • 4km",
+   "desc": "Easy Run • 4km • \n\n5 mins walking warm up\n\n4km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_11_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_11_EASY_RUN_0&weekIndex=11"
+  },
+  {
+   "date": "2027-01-08",
+   "title": "Walk Run • 5km",
+   "desc": "5 mins walking warm up\n\n2 reps of:\n• 2.5km at a conversational pace, 60s walking\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_11_WALK_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_11_WALK_RUN_0&weekIndex=11"
+  },
+  {
+   "date": "2027-01-11",
+   "title": "Continuous Run • 4.75km",
+   "desc": "Easy Run • 4.75km • \n\n5 mins walking warm up\n\n4.75km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_12_EASY_RUN_0",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_12_EASY_RUN_0&weekIndex=12"
+  },
+  {
+   "date": "2027-01-17",
+   "title": "Your First 5km Run • 5km",
+   "desc": "Easy Run • 5km • \n\n5 mins walking warm up\n\n5km continuous run at a conversational pace\n\n5 mins walking cool down",
+   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_12_EASY_RUN_1",
+   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_12_EASY_RUN_1&weekIndex=12"
+  }
+ ]
+}

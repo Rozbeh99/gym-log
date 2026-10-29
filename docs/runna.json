@@ -1,5 +1,5 @@
 {
- "changed": "2026-10-29T15:42:47Z",
+ "changed": "2026-10-29T18:30:31Z",
  "runs": [
   {
    "date": "2026-10-26",
@@ -12,11 +12,14 @@
    "time": "27.7"
   },
   {
-   "date": "2026-10-30",
-   "title": "Walk Run • 28m",
+   "date": "2026-10-29",
+   "title": "Walk Run",
    "desc": "5 mins walking warm up\n\n2 reps of:\n• 90s at a conversational pace, 90s walking\n• 4 mins at a conversational pace, 2 mins walking\n\n5 mins walking cool down",
-   "id": "UPCOMING_PLAN_WORKOUT-eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_1_WALK_RUN_1",
-   "link": "https://club.runna.com/n9Tx/workout?dayId=eee17718-7957-4d5d-9475-3a3d0e4e2ee4_plan_week_1_WALK_RUN_1&weekIndex=1"
+   "id": "COMPLETED_PLAN_WORKOUT-F1C886A4-BE67-43F9-A44E-DD0FB8D5884F",
+   "link": "https://club.runna.com/n9Tx/activities?activityId=F1C886A4-BE67-43F9-A44E-DD0FB8D5884F",
+   "done": true,
+   "dist": "3.18",
+   "time": "29.9"
   },
   {
    "date": "2026-11-02",

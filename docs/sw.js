@@ -1,5 +1,5 @@
 /* Gym Log - offline shell. Bumping CACHE evicts the old one. */
-var CACHE = 'gymlog-v4';
+var CACHE = 'gymlog-v5';
 var SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {

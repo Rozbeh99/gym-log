@@ -440,6 +440,8 @@ function loadRunna() {
     }
     RUNNA = { changed: j.changed, byDate, all, count: j.runs.length };
     importRunna();
+    for (const id of Object.keys(S.runnaMoves || {})) swapLiftFor(id);
+    save(true);
     if (!open && !preview && !document.getElementById("layer").innerHTML) render();
   }).catch(() => {});
 }
@@ -456,6 +458,24 @@ function importRunna() {
     S.sessions[id] = { id, day: "runna", date, start: t, end: t, variant: r.title, plan: r.desc, link: r.link, dist: r.dist, time: r.time, runna: r.id };
   }
   save(true);
+}
+// A Runna run moved onto a lift day takes that day; the lift goes to the next day with no lift or run.
+const liftOn = dISO => { const id = S.moves && dISO in S.moves ? S.moves[dISO] : S.schedule[dowIdx(new Date(dISO + "T12:00:00"))]; return id && !byId(id)?.run ? id : ""; };
+function swapLiftFor(runId) {
+  const to = S.runnaMoves?.[runId], sw = S.runnaSwaps || (S.runnaSwaps = {});
+  if (!to || sw[runId]) return;
+  const lift = liftOn(to);
+  if (!lift || sessionsOn(to).some(s => s.day === lift)) return;
+  let dest = "";
+  for (let k = 1; k <= 7 && !dest; k++) { const d = iso(new Date(new Date(to + "T12:00:00").getTime() + k * 864e5)); if (!liftOn(d) && !runnaOn(d).length) dest = d; }
+  if (!dest) return;
+  sw[runId] = { to, dest, lift, was: [to in S.moves ? S.moves[to] : null, dest in S.moves ? S.moves[dest] : null] };
+  S.moves[to] = ""; S.moves[dest] = lift;
+}
+function unswapLiftFor(runId) {
+  const sw = S.runnaSwaps?.[runId]; if (!sw) return;
+  [[sw.to, sw.was[0]], [sw.dest, sw.was[1]]].forEach(([d, v]) => v === null ? delete S.moves[d] : S.moves[d] = v);
+  delete S.runnaSwaps[runId];
 }
 function runnaMoveBtn(r, shownOn) {
   if (r.done || !r.id) return "";
@@ -478,6 +498,7 @@ function load() {
   const old = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
   for (const m of [s.moves, s.lite]) for (const k of Object.keys(m || {})) if (k < old) delete m[k];
   for (const [k, to] of Object.entries(s.runnaMoves || {})) if (to < old) delete s.runnaMoves[k];
+  for (const [k, sw] of Object.entries(s.runnaSwaps || {})) if (sw.to < old && sw.dest < old) delete s.runnaSwaps[k];
   return s;
 }
 let saveT = null;
@@ -971,7 +992,7 @@ function previewView(pv) {
   const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
   const rn = d.id === "runna" ? runnaOn(pv.date) : [];
   const body = d.id === "runna"
-    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}${r.date !== pv.date ? `<p class="note" style="padding:0">Moved here from ${fmtDate(r.date)}.</p>` : ""}</div>${runnaMoveBtn(r, pv.date)}${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
+    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}${r.date !== pv.date ? `<p class="note" style="padding:0">Moved here from ${fmtDate(r.date)}.${S.runnaSwaps?.[r.id] ? ` ${esc(byId(S.runnaSwaps[r.id].lift).name)} moved to ${fmtDate(S.runnaSwaps[r.id].dest)}.` : ""}</p>` : ""}</div>${runnaMoveBtn(r, pv.date)}${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
     : d.run
     ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
     : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
@@ -1254,8 +1275,9 @@ document.addEventListener("click", ev => {
     case "start": return startSession(b.dataset.day, b.dataset.date);
     case "runnamove": {
       const mv = S.runnaMoves || (S.runnaMoves = {}), r = RUNNA?.all[b.dataset.id];
-      if (b.dataset.to) mv[b.dataset.id] = b.dataset.to; else delete mv[b.dataset.id];
-      save(); toast(b.dataset.to ? "Moved to today. Log it here when you're done." : `Back on ${r ? fmtDate(r.date) : "its day"}.`);
+      if (b.dataset.to) { mv[b.dataset.id] = b.dataset.to; swapLiftFor(b.dataset.id); } else { delete mv[b.dataset.id]; unswapLiftFor(b.dataset.id); }
+      const sw = S.runnaSwaps?.[b.dataset.id];
+      save(); toast(!b.dataset.to ? `Back on ${r ? fmtDate(r.date) : "its day"}.` : sw ? `Run moved to today. ${byId(sw.lift).name} moved to ${fmtDate(sw.dest)}.` : "Moved to today. Log it here when you're done.");
       if (b.dataset.to) preview = { day: "runna", date: b.dataset.to }; else { preview = null; }
       render(); return window.scrollTo(0, 0);
     }

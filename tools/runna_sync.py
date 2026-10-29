@@ -10,6 +10,7 @@ import datetime as dt
 import json
 import os
 import pathlib
+import re
 import sys
 import urllib.request
 
@@ -60,6 +61,41 @@ def event_date(params, value, tz):
     return d
 
 
+def minutes(clock):
+    """'27:40' or '1:02:15' -> minutes as a short string."""
+    parts = [int(x) for x in clock.split(":")]
+    secs = sum(v * 60 ** i for i, v in enumerate(reversed(parts)))
+    return f"{secs / 60:.1f}".rstrip("0").rstrip(".")
+
+
+def tidy(ev):
+    """Runna's events: UPCOMING_* hold the workout, COMPLETED_* add a summary with distance and time.
+    Location, laps and PBs are left out on purpose: the output is public."""
+    title = re.sub(r"^[^\w(]+", "", ev["title"]).strip() or ev["title"]
+    desc = ev.get("desc", "")
+    m = re.search(r"View in the Runna app:\s*(https://club\.runna\.com/\S+)", desc)
+    run = {"date": ev["date"], "title": title, "desc": "", "id": ev.get("uid", ""), "link": m.group(1) if m else ""}
+    if ev.get("uid", "").startswith("COMPLETED"):
+        run["done"] = True
+        d = re.search(r"Distance:\s*([\d.]+)\s*km", desc)
+        t = re.search(r"Time:\s*([\d:]+)", desc)
+        if d:
+            run["dist"] = d.group(1)
+        if t:
+            run["time"] = minutes(t.group(1))
+        body = re.search(r"Description:\n(.*?)(?=\n\S{1,3}\s*(?:Laps|PBs):|\n\S{1,3}\s*View in the Runna app|\Z)", desc, re.S)
+        desc = body.group(1) if body else ""
+    else:
+        lines = desc.split("\n")
+        if lines and lines[0].startswith(title.split(" • ")[0]):
+            lines = lines[1:]
+        desc = "\n".join(lines)
+    desc = re.sub(r".*View in the Runna app.*", "", desc)
+    desc = re.sub(r"(?m)^-{3,}$\n?", "", desc)
+    run["desc"] = re.sub(r"\n{3,}", "\n\n", desc).strip()
+    return {k: v for k, v in run.items() if v != ""}
+
+
 def parse(text, tz):
     runs, ev = [], None
     for line in unfold(text):
@@ -68,7 +104,7 @@ def parse(text, tz):
             continue
         if line == "END:VEVENT":
             if ev and ev.get("date") and ev.get("title") and ev.get("status") != "CANCELLED":
-                runs.append({"date": ev["date"], "title": ev["title"], "desc": ev.get("desc", "")})
+                runs.append(tidy(ev))
             ev = None
             continue
         if ev is None or ":" not in line:
@@ -82,6 +118,8 @@ def parse(text, tz):
             ev["title"] = unescape(value)
         elif name == "DESCRIPTION":
             ev["desc"] = unescape(value)
+        elif name == "UID":
+            ev["uid"] = value.strip()
         elif name == "STATUS":
             ev["status"] = value.strip().upper()
     return runs

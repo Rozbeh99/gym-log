@@ -376,11 +376,28 @@ function loadRunna() {
   fetch("runna.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(j => {
     if (!j || !Array.isArray(j.runs) || !j.runs.length) return;
     const byDate = {};
-    for (const r of j.runs) (byDate[r.date] ||= []).push({ title: String(r.title || "Run"), desc: String(r.desc || "") });
+    const safe = u => /^https:\/\/club\.runna\.com\//.test(u || "") ? u : "";
+    for (const r of j.runs) (byDate[r.date] ||= []).push({ id: String(r.id || ""), title: String(r.title || "Run"), desc: String(r.desc || ""), link: safe(r.link), done: !!r.done, dist: String(r.dist || ""), time: String(r.time || "") });
     RUNNA = { changed: j.changed, byDate, count: j.runs.length };
+    importRunna();
     if (!open && !preview && !document.getElementById("layer").innerHTML) render();
   }).catch(() => {});
 }
+// Runs finished in Runna land in the log by themselves, once each (deleting one here keeps it gone).
+function importRunna() {
+  const seen = S.runnaSeen || (S.runnaSeen = {});
+  let n = 0;
+  for (const [date, runs] of Object.entries(RUNNA.byDate)) for (const r of runs) {
+    if (!r.done || !r.id || seen[r.id]) continue;
+    seen[r.id] = 1;
+    const mine = Object.values(S.sessions).find(s => s.day === "runna" && s.date === date && !s.runna);
+    if (mine) { mine.runna = r.id; mine.dist ||= r.dist; mine.time ||= r.time; continue; }
+    const id = "r" + Date.now().toString(36) + n++, t = new Date(date + "T12:00:00").getTime();
+    S.sessions[id] = { id, day: "runna", date, start: t, end: t, variant: r.title, plan: r.desc, link: r.link, dist: r.dist, time: r.time, runna: r.id };
+  }
+  save(true);
+}
+const runnaLink = u => u ? `<a class="cta quiet" href="${esc(u)}" target="_blank" rel="noopener">Open in Runna</a>` : "";
 const runnaRows = (dISO, act = "preview") => runnaOn(dISO).map(r =>
   `<button class="row" type="button" data-act="${act}" data-day="runna" data-date="${dISO}" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">${esc(r.title)}</span><span class="t2">${esc(r.desc.split("\n").find(Boolean) || "From your Runna plan")}</span></span><span class="end">runna</span><span class="chev">›</span></button>`).join("");
 
@@ -491,7 +508,7 @@ function todayView() {
       : planned.run ? [["Session", "1", "run"], ["Pick", planned.opts.length, "options"], ["Effort", planned.id === "easy" ? "3–4" : "7–8", "RPE"]]
       : [["Exercises", planned.ex.length, ""], ["Sets", totalSets(planned), ""], ["Time", "~" + estMin(planned), "min"]];
     const btn = isDone ? `<button class="cta quiet" type="button" data-act="open" data-id="${loggedToday.id}">Done today · view log</button>`
-      : planned.id === "runna" ? `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="runna">Details</button><button class="cta" type="button" data-act="start" data-day="runna">Log run</button></div>`
+      : planned.id === "runna" ? `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="runna">Details</button><button class="cta" type="button" data-act="start" data-day="runna">Log run</button></div>${runnaLink(plan.runs[0].link)}`
       : planned.run ? `<div class="btnrow"><button class="cta" type="button" data-act="start" data-day="${planned.id}">Log run</button><a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Run 5K app</a></div>`
       : `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${planned.id}">Preview</button><button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button></div>`;
     const sub = planned.id === "runna" ? plan.runs[0].desc.split("\n").find(Boolean) || planned.focus : planned.focus;
@@ -565,7 +582,7 @@ function startSession(dayId, date) {
   if (existing) { if (!d.run && !existing.end) S.active = existing.id; save(); open = existing.id; return render(), window.scrollTo(0, 0); }
   const id = "s" + Date.now().toString(36);
   const rn = dayId === "runna" && runnaOn(date)[0];
-  S.sessions[id] = rn ? { id, day: dayId, date, start: Date.now(), variant: rn.title, plan: rn.desc }
+  S.sessions[id] = rn ? { id, day: dayId, date, start: Date.now(), variant: rn.title, plan: rn.desc, link: rn.link }
     : dayId === "runna" ? { id, day: dayId, date, start: Date.now(), variant: "Runna run" }
     : d.run ? { id, day: dayId, date, start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
     : { id, day: dayId, date, start: Date.now(), unit: S.unit, ex: {} };
@@ -619,7 +636,7 @@ function previewView(pv) {
   const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
   const rn = d.id === "runna" ? runnaOn(pv.date) : [];
   const body = d.id === "runna"
-    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}</div>`).join("") : `<div class="empty">No Runna session on this day.</div>`)
+    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}</div>${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
     : d.run
     ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
     : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
@@ -636,7 +653,7 @@ function previewView(pv) {
     <section class="view" style="margin-top:14px">
       <p class="note">${esc(d.focus)}. Nothing is logged until you tap the button below.</p>
       ${body}
-      ${d.id === "runna" && !past && !isToday ? "" : `<button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>`}
+      ${d.id === "runna" && (!past && !isToday || rn.some(r => r.done)) ? "" : `<button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>`}
       ${d.run && d.id !== "runna" ? `<a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Open Run 5K</a>` : ""}
     </section>`;
 }
@@ -682,7 +699,7 @@ function finish(s) {
 function runView(s) {
   const d = byId(s.day);
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
-      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button>${d.id === "runna" ? "" : `<a class="clock" href="${RUN5K}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open Run 5K ↗</a>`}</div>
+      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button>${d.id === "runna" ? (s.link ? `<a class="clock" href="${esc(s.link)}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open in Runna ↗</a>` : "") : `<a class="clock" href="${RUN5K}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open Run 5K ↗</a>`}</div>
       <div class="wotitle"><h1 style="color:var(--ink)">${esc(d.id === "runna" ? s.variant : d.name)}</h1></div></div></div>
     <section class="view" style="margin-top:14px">
       <div class="dateline"><label for="wo-date">Date</label><input type="date" id="wo-date" value="${s.date}"></div>
@@ -700,7 +717,7 @@ function runView(s) {
         <div class="field"><label for="run-note">Notes</label><textarea id="run-note" data-run="note" placeholder="Route, weather, how the legs felt">${esc(s.note)}</textarea></div>
       </div>
       <button class="cta" type="button" data-act="close">Save run</button>
-      <p class="note">${d.id === "runna" ? "Copy the distance and time from Runna after your run so your whole week is in one place." : "If you follow a session in the Run 5K app that day, log the distance and time here too so your whole week is in one place."}</p>
+      <p class="note">${d.id === "runna" ? s.runna ? "Brought in from Runna. Add effort and notes if you like." : "Runs you finish in Runna fill in here by themselves within a few hours, or type the numbers in now." : "If you follow a session in the Run 5K app that day, log the distance and time here too so your whole week is in one place."}</p>
     </section>`;
 }
 function paceText(s) {

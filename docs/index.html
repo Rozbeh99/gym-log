@@ -284,6 +284,17 @@ textarea { resize: vertical; min-height: 70px; }
 .race .k { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .race .v { font-family: var(--display); font-size: 30px; font-weight: 700; line-height: 1.05; color: var(--amber); }
 .race .t2 { font-size: 12.5px; color: var(--muted); }
+.hmgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.hmd { font-family: var(--mono); font-size: 10px; color: var(--faint); text-align: center; }
+.hm { aspect-ratio: 2 / 1; border-radius: 6px; border: 0; padding: 0; background: rgba(255,220,190,.05); position: relative; }
+.hm.on { background: var(--c); box-shadow: 0 0 10px -3px var(--c); }
+.hm.now { outline: 1.5px solid var(--amber); outline-offset: 1px; }
+.hm.future { background: none; border: 1px dashed var(--line); }
+.hm i { position: absolute; right: 3px; top: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+.bwform { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.bwform input { min-width: 0; background: rgba(0,0,0,.28); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-family: var(--mono); font-size: 18px; }
+.bwform span { color: var(--muted); font-size: 13px; }
+.bwform .sbtn { padding: 10px 14px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -559,9 +570,10 @@ function nudge(ex, last, s) {
   return { kind: "rep", w, rs: reps.map(r => Math.min(ex.hi, r + 1)), text: "+1 rep a set, same weight" };
 }
 
-// Best estimated 1RM per session for one variation.
+// Best estimated 1RM per session for one variation. Cached per render, since plateaus and readiness ask for it a lot.
+let memo = {};
 function series(name) {
-  return Object.values(S.sessions).map(s => {
+  return memo["s:" + name] ||= Object.values(S.sessions).map(s => {
     const e = Object.values(s.ex || {}).find(e => e.v === name); if (!e) return null;
     let best = 0, top = null;
     for (const x of e.sets) { const v = e1rm(num(x.w), num(x.r)); if (v > best) { best = v; top = x; } }
@@ -576,7 +588,7 @@ function stalled(name) {
   const recent = pts.filter(p => p.date > cut);
   return recent.length >= 2 && Math.max(...recent.map(p => p.v)) <= Math.max(...pts.filter(p => p.date <= cut).map(p => p.v));
 }
-const stalledLifts = () => [...new Set(DAYS.flatMap(d => d.ex.map(variantOf)))].filter(stalled);
+const stalledLifts = () => memo.stalled ||= [...new Set(DAYS.flatMap(d => d.ex.map(variantOf)))].filter(stalled);
 
 // Runs near a date, planned or from Runna. "Hard" means it needs fresh legs.
 const HARD = /interval|tempo|hill|threshold|fartlek|speed|progression|race|time trial|long run|continuous|5\s?km run/i;
@@ -610,10 +622,11 @@ function raceDate() {
 }
 const runLog = () => Object.values(S.sessions).filter(s => byId(s.day)?.run && num(s.dist) > 0 && num(s.time) > 0).sort((a, b) => a.date.localeCompare(b.date));
 const fmtClock = min => { const t = Math.round(min * 60), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0"); };
-// Riegel's formula from your best run of 1 km+ in the last 6 weeks.
+// Riegel's formula from your best continuous run of 1 km+ in the last 6 weeks. Walk-runs would make it look slower than you are.
+const isWalk = s => /walk/i.test(s.variant || "");
 function predict5k() {
   const from = addDays(todayISO(), -42);
-  const c = runLog().filter(s => s.date >= from && num(s.dist) >= 1).map(s => ({ s, t: num(s.time) * Math.pow(5 / num(s.dist), 1.06) }));
+  const c = runLog().filter(s => s.date >= from && num(s.dist) >= 1 && !isWalk(s)).map(s => ({ s, t: num(s.time) * Math.pow(5 / num(s.dist), 1.06) }));
   return c.length ? c.reduce((a, b) => b.t < a.t ? b : a) : null;
 }
 const readyScore = r => r && r.sleep && r.sore && r.energy ? (r.sleep + r.sore + r.energy) / 3 : 0;
@@ -638,7 +651,7 @@ function coachCards() {
   if (race && race >= today) {
     const days = daysBetween(today, race), p = predict5k();
     out.push(`<button class="panel race" type="button" data-act="runs"><span class="rl"><span class="eyebrow">5K · ${esc(fmtDate(race))}</span><span class="big">${days === 0 ? "Race day" : days + (days === 1 ? " day" : " days")}</span><span class="t2">${days <= 7 && days > 0 ? "Taper week: leg day runs at half the sets." : "See your running progress ›"}</span></span>
-      <span class="rr"><span class="k">Predicted</span><span class="v">${p ? fmtClock(p.t) : "–"}</span><span class="t2">${p ? "from your best recent run" : "after your first logged run"}</span></span></button>`);
+      <span class="rr"><span class="k">Predicted</span><span class="v">${p ? fmtClock(p.t) : "–"}</span><span class="t2">${p ? "from your best recent run" : "after your first continuous run"}</span></span></button>`);
   }
   for (let k = 0; k < 7; k++) {
     const dd = addDays(today, k);
@@ -647,6 +660,7 @@ function coachCards() {
     const to = freeDay(dd);
     out.push(`<div class="alert hard"><b>Legs · ${k === 0 ? "today" : esc(fmtDate(dd))}</b><span>${esc(cl.text)}</span><div class="mini">${to ? `<button class="sbtn" type="button" data-act="moveday" data-from="${dd}" data-to="${to}">Move to ${WD[dowIdx(new Date(to + "T12:00:00"))]}</button>` : ""}<button class="sbtn" type="button" data-act="liteday" data-date="${dd}">Make it lighter</button></div></div>`);
   }
+  if (!bwThisWeek()) out.push(`<div class="alert"><b>Weekly weigh-in</b><span>Once a week, same morning routine: after the bathroom, before breakfast.</span>${bwForm()}</div>`);
   if (S.deload === ws) out.push(`<div class="alert mode"><b>Lighter week</b><span>${esc(MODES.deload)}</span><button class="sbtn" type="button" data-act="deloadend">End it early</button></div>`);
   else if (S.deloadNo !== ws && (!S.lastDeload || daysBetween(S.lastDeload, today) >= 28)) {
     const st = stalledLifts(), lifts = Object.values(S.sessions).filter(s => !byId(s.day).run && isLogged(s)).map(s => s.date).sort();
@@ -696,6 +710,24 @@ function musclePanel() {
       return `<div class="mus"><span>${m}</span><div class="track"><i class="zone" style="left:${X(lo)}%;width:${X(hi) - X(lo)}%"></i><i class="fill ${d >= lo ? "ok" : ""}" style="width:${X(d)}%"></i>${p ? `<i class="plan" style="left:${X(p)}%"></i>` : ""}</div><span class="num">${fmtN(d)}<small>/${fmtN(p)}</small></span></div>`; }).join("")}
     <p class="note" style="padding:0">Ticked sets so far, out of what this week's plan adds up to (the white line). The green band is the range research supports. Helper muscles count as half a set, and your runs add quad work on top.</p></div></div>`;
 }
+// ================= Bodyweight =================
+const bwList = () => Object.entries(S.bw || {}).filter(([, v]) => num(v) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({ date, v: num(v) }));
+const bwThisWeek = () => bwList().find(p => p.date >= iso(weekStart()));
+const bwForm = () => `<div class="bwform"><input id="bw-in" inputmode="decimal" placeholder="${esc(bwList().slice(-1)[0]?.v ?? (S.unit === "lb" ? "180" : "80"))}" aria-label="Bodyweight in ${S.unit}" value="${esc(S.bw?.[todayISO()] || "")}"><span>${S.unit}</span><button class="sbtn" type="button" data-act="bwsave">Save</button></div>`;
+function weighSheet() {
+  sheet(`<h3>Weigh-in</h3><p class="note" style="padding:0">After the bathroom, before breakfast, same scale each week.</p>${bwForm()}<button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
+  setTimeout(() => document.getElementById("bw-in")?.focus(), 50);
+}
+function bwPanel() {
+  const pts = bwList();
+  const body = !pts.length ? `<p class="note" style="padding:0">Log your weight once a week and the trend shows here.</p>`
+    : (() => { const last = pts[pts.length - 1], ref = [...pts].reverse().find(p => daysBetween(p.date, last.date) >= 28) || pts[0], ch = last.v - ref.v, wk = ref === last ? 0 : ch / Math.max(1, daysBetween(ref.date, last.date) / 7);
+      return `<div class="telemetry" style="border-top:0"><div><span class="k">Latest</span><span class="v">${fmtN(last.v)}<small>${S.unit}</small></span></div><div><span class="k">Change</span><span class="v">${ch > 0 ? "+" : ""}${fmtN(ch)}<small>${S.unit}</small></span></div><div><span class="k">Per week</span><span class="v">${wk > 0 ? "+" : ""}${wk.toFixed(2)}</span></div></div>
+        ${pts.length > 1 ? lineChart(pts, { fmt: v => v.toFixed(1), label: "Bodyweight over time" }) : ""}
+        <p class="note" style="padding:0">${ref === last ? "One weigh-in so far. The trend starts with the second." : `Since ${fmtDate(ref.date)}. For lean muscle gain, about ${S.unit === "lb" ? "+0.2 to +0.5 lb" : "+0.1 to +0.25 kg"} a week is the usual target. Training for a 5K, holding steady is fine too.`}</p>`; })();
+  return `<div class="group"><div class="label">Bodyweight</div><div class="panel pad" style="display:grid;gap:12px">${body}${bwForm()}</div></div>`;
+}
+
 let runMetric = "speed";
 function runningPanel() {
   const runs = runLog(); if (!runs.length) return "";
@@ -736,9 +768,11 @@ let open = null; // id of the session being shown full-screen
 let preview = null; // { day, date } when looking at a plan without logging it
 let weekOff = 0; // 0 = this week, -1 = last week, ...
 let histEx = null;
+let histMore = 8;
 const pendingDel = new Set();
 function go(t) { tab = t; open = null; preview = null; render(); window.scrollTo(0, 0); }
 function render() {
+  memo = {};
   const v = document.getElementById("view");
   document.getElementById("tabbar").hidden = !!(open || preview);
   if (!open && preview) { v.innerHTML = previewView(preview); return; }
@@ -804,7 +838,7 @@ function todayView() {
   const ve = iso(new Date(vs.getTime() + 6 * 864e5)), vsISO = iso(vs);
   const weekLog = sessionsList().filter(s => s.date >= vsISO && s.date <= ve && isLogged(s));
   const weekLabel = weekOff === 0 ? "This week" : weekOff === -1 ? "Last week" : weekOff === 1 ? "Next week" : "Week of " + vs.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  const others = ALL.filter(d => d.id !== plannedId).map(d =>
+  const others = () => ALL.filter(d => d.id !== plannedId).map(d =>
     `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("");
   return `<section class="view">
     <div class="head"><div class="eyebrow">Week of ${ws.toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${week.length} of ${planCount} done</div>
@@ -820,9 +854,15 @@ function todayView() {
       <p class="note">Tap a day to see what you did, or what's planned.</p>
       ${weekLog.length ? `<div class="panel rows">${weekLog.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)} · ${fmtDate(s.date)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div>` : weekOff < 0 ? `<div class="empty" style="padding:18px">Nothing logged that week.</div>` : ""}
     </div>
-    <div class="group"><div class="label">Train something else</div><div class="panel rows">${others}</div>
-      <p class="note">Tap one to see the exercises first. Starting it logs it on today's date, and you can change the date inside.</p></div>
+    <button class="cta quiet" type="button" data-act="others">Train something else</button>
   </section>`;
+}
+function othersSheet() {
+  const plannedId = dayPlan(todayISO()).id;
+  sheet(`<h3>Train something else</h3><div class="panel rows">${ALL.filter(d => d.id !== plannedId).map(d =>
+    `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("")}</div>
+    <p class="note" style="padding:0">Tap one to see the exercises first. Starting it logs it on today's date, and you can change the date inside.</p>
+    <button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
 }
 function heroCard(d, when, sub, ringHtml, tel, btn) {
   return `<div class="hero" style="--c:var(${d.c});--glow:${d.glow}">
@@ -1044,7 +1084,7 @@ function historyView() {
   const lifts = all.filter(s => !byId(s.day).run).length;
   const runs = all.filter(s => byId(s.day).run);
   const km = runs.reduce((n, s) => n + num(s.dist), 0);
-  const list = all.slice(0, 40).map(s => {
+  const list = all.slice(0, histMore).map(s => {
     const d = byId(s.day); let body;
     if (d.run) body = `<ul><li>${esc(s.variant || "")} <span>${s.dist ? esc(s.dist) + " km" : ""}${s.time ? " · " + esc(s.time) + " min" : ""}${s.dist && s.time ? " · " + paceText(s).replace("Pace ", "") : ""}</span></li></ul>`;
     else body = `<ul>${Object.values(s.ex || {}).filter(e => e.sets.some(filled)).map(e => `<li>${esc(e.v)} <span>${e.sets.filter(filled).map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join(" ")}</span></li>`).join("") || "<li><span>No sets entered</span></li>"}</ul>`;
@@ -1056,14 +1096,32 @@ function historyView() {
     <div class="head"><div class="eyebrow">Progress</div><h1>Your log</h1></div>
     <div class="panel pad"><div class="telemetry" style="border:0"><div><span class="k">Workouts</span><span class="v">${lifts}</span></div><div><span class="k">Lifted</span><span class="v">${fmtK(totalVol)}<small>${S.unit}</small></span></div><div><span class="k">Ran</span><span class="v">${km.toFixed(1)}<small>km</small></span></div></div></div>
     ${musclePanel()}
+    ${bwPanel()}
     ${names.length ? `<div class="group"><div class="label">Strength trend</div><div class="panel pad" style="display:grid;gap:12px">
       <select class="select" id="hist-ex" aria-label="Exercise">${names.map(n => `<option ${n === histEx ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
       ${chart(histEx)}</div></div>` : ""}
     ${(() => { const st = stalledLifts(); return st.length ? `<div class="group"><div class="label">Stalled for 3 weeks</div><div class="panel rows">${st.map(n => { const ex = DAYS.flatMap(d => d.ex).find(e => variantOf(e) === n); return `<button class="row" type="button" data-act="stall" data-name="${esc(n)}" data-ex="${ex.id}" style="--c:var(--amber)"><span class="stripe"></span><span class="main"><span class="t1">${esc(n)}</span><span class="t2">No new best since ${fmtDate(series(n).reduce((a, b) => b.v > a.v ? b : a).date)}</span></span><span class="chev">›</span></button>`; }).join("")}</div></div>` : ""; })()}
     ${runningPanel()}
     ${readinessPanel()}
-    <div class="group"><div class="label">Sessions</div>${list}</div>
+    <div class="group"><div class="label">Last 12 weeks</div>${heatmap(all)}</div>
+    <div class="group"><div class="label">Sessions</div>${list}
+      ${all.length > histMore ? `<button class="cta quiet" type="button" data-act="more">Show ${Math.min(10, all.length - histMore)} more</button>` : ""}</div>
   </section>`;
+}
+// One square per day, coloured by what you trained. Tap a day to open it.
+function heatmap(all) {
+  const by = {};
+  for (const s of all) (by[s.date] ||= []).push(s);
+  const start = addDays(iso(weekStart()), -77), today = todayISO();
+  let lifts = 0, runs = 0;
+  const cells = Array.from({ length: 84 }, (_, i) => {
+    const dd = addDays(start, i), ss = by[dd] || [], d = ss[0] && byId(ss[0].day);
+    if (dd > today) return `<span class="hm future"></span>`;
+    for (const s of ss) byId(s.day).run ? runs++ : lifts++;
+    return `<button type="button" class="hm ${ss.length ? "on" : ""} ${dd === today ? "now" : ""}" data-act="day" data-date="${dd}" data-day="" style="--c:${d ? `var(${d.c})` : "transparent"}" aria-label="${fmtDate(dd)}${ss.length ? ": " + ss.map(s => byId(s.day).name).join(", ") : ""}">${ss.length > 1 ? "<i></i>" : ""}</button>`;
+  }).join("");
+  return `<div class="panel pad" style="display:grid;gap:10px"><div class="hmgrid">${WD.map(w => `<span class="hmd">${w[0]}</span>`).join("")}${cells}</div>
+    <p class="note" style="padding:0">${lifts} lift${lifts === 1 ? "" : "s"} and ${runs} run${runs === 1 ? "" : "s"} in 12 weeks. Each row is a week, colours match the training day. Tap a day to open it.</p></div>`;
 }
 function chart(name) {
   const pts = series(name);
@@ -1182,6 +1240,14 @@ document.addEventListener("click", ev => {
     case "day": return openDay(b.dataset.date, b.dataset.day);
     case "wk": ev.preventDefault(); weekOff = +b.dataset.d === 0 ? 0 : weekOff + +b.dataset.d; return render();
     case "resume": open = S.active; render(); return window.scrollTo(0, 0);
+    case "others": return othersSheet();
+    case "bwsave": {
+      const v = (document.querySelector(".sheet #bw-in") || document.getElementById("bw-in"))?.value.trim().replace(",", ".");
+      S.bw ||= {};
+      if (num(v) > 0) S.bw[todayISO()] = String(num(v)); else delete S.bw[todayISO()];
+      save(true); closeSheet(); toast(num(v) > 0 ? `Saved ${num(v)} ${S.unit}` : "Weigh-in removed"); return render();
+    }
+    case "more": histMore += 10; return render();
     case "open": closeSheet(); open = b.dataset.id; render(); return window.scrollTo(0, 0);
     case "close": stopRest(); open = null; preview = null; save(true); render(); return window.scrollTo(0, 0);
     case "finish": return finish(s);
@@ -1285,6 +1351,8 @@ document.addEventListener("change", ev => {
 
 render();
 loadRunna();
+// The Monday ntfy reminder links here with ?weigh=1.
+if (/[?&]weigh=1/.test(location.search)) { history.replaceState(null, "", location.pathname); weighSheet(); }
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>

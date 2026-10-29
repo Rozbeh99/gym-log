@@ -351,14 +351,38 @@ const RUNS = [
            ["Hills 8 × 30 s", "10 min easy, 8 × 30 s hard uphill, walk down, 10 min easy."]] },
 ];
 const ALL = [...DAYS, ...RUNS];
+// Runs from the Runna calendar, copied into runna.json by .github/workflows/runna-sync.yml
+const RUNNA_DAY = { id: "runna", name: "Runna Run", c: "--steel", glow: "rgba(154,167,180,.22)", focus: "From your Runna plan", run: true, opts: [] };
 // Photos: Free Exercise DB (public domain, github.com/yuhonas/free-exercise-db). Some swaps borrow the closest match.
 const IMG = {"45° Back Extension":"Hyperextensions_Back_Extensions","Ab Wheel Rollout":"Barbell_Ab_Rollout_-_On_Knees","Assisted Nordic Curl":"Natural_Glute_Ham_Raise","Assisted Pull-up":"Band_Assisted_Pull-Up","Back Squat":"Barbell_Full_Squat","Band Curl":"Close-Grip_EZ-Bar_Curl_with_Band","Band Fly":"Cross_Over_-_With_Bands","Band Hammer Curl":"Hammer_Curls","Band Lateral Raise":"Lateral_Raise_-_With_Bands","Band Leg Curl":"Seated_Band_Hamstring_Curl","Band Overhead Extension":"Speed_Band_Overhead_Triceps","Band Pressdown":"Triceps_Pushdown_-_Rope_Attachment","Band Pull-Apart":"Band_Pull_Apart","Band Row":"Seated_Cable_Rows","Band-Assisted Chin-up":"Band_Assisted_Pull-Up","Band-Assisted Pull-up":"Band_Assisted_Pull-Up","Barbell Bench Press":"Barbell_Bench_Press_-_Medium_Grip","Barbell Row":"Bent_Over_Barbell_Row","Bayesian Cable Curl":"Standing_One-Arm_Cable_Curl","Bent-Over Rear Delt Fly":"Seated_Bent-Over_Rear_Delt_Raise","Bulgarian Split Squat":"Split_Squat_with_Dumbbells","Cable Crossover Fly":"Cable_Crossover","Cable Crunch":"Cable_Crunch","Cable Curl":"Standing_Biceps_Cable_Curl","Cable Lateral Raise":"Cable_Seated_Lateral_Raise","Chest-Supported Dumbbell Row":"Dumbbell_Incline_Row","Chin-up":"Chin-Up","Close-Grip Bench Press":"Close-Grip_Barbell_Bench_Press","Close-Grip Push-up":"Push-Ups_-_Close_Triceps_Position","Cross-Body Hammer Curl":"Cross_Body_Hammer_Curl","Decline Crunch":"Decline_Crunch","Diamond Push-up":"Push-Ups_-_Close_Triceps_Position","Dips":"Dips_-_Triceps_Version","Dumbbell Bench Press":"Dumbbell_Bench_Press","Dumbbell Curl":"Dumbbell_Bicep_Curl","Dumbbell Fly":"Dumbbell_Flyes","Dumbbell French Press":"Standing_Dumbbell_Triceps_Extension","Dumbbell Lateral Raise":"Side_Lateral_Raise","Dumbbell Overhead Extension":"Standing_Dumbbell_Triceps_Extension","Dumbbell Pullover":"Straight-Arm_Dumbbell_Pullover","Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","EZ-Bar Curl":"EZ-Bar_Curl","EZ-Bar Skull Crusher":"EZ-Bar_Skullcrusher","Face Pull":"Face_Pull","Feet-Elevated Push-up":"Push-Ups_With_Feet_Elevated","Flat Dumbbell Press":"Dumbbell_Bench_Press","Goblet Squat":"Goblet_Squat","Good Morning":"Good_Morning","Hack Squat":"Hack_Squat","Hammer Curl":"Hammer_Curls","Hanging Leg Raise":"Hanging_Leg_Raise","Incline Barbell Press":"Barbell_Incline_Bench_Press_-_Medium_Grip","Incline Dumbbell Curl":"Incline_Dumbbell_Curl","Incline Dumbbell Press":"Incline_Dumbbell_Press","Incline Smith Press":"Smith_Machine_Incline_Bench_Press","Inverted Row":"Inverted_Row","Lat Pulldown":"Wide-Grip_Lat_Pulldown","Lean-Away Dumbbell Lateral":"One-Arm_Side_Laterals","Leg Extension":"Leg_Extensions","Leg Press":"Leg_Press","Leg Press Calf Raise":"Calf_Press_On_The_Leg_Press_Machine","Low-to-High Cable Fly":"Low_Cable_Crossover","Lying Leg Curl":"Lying_Leg_Curls","Machine Chest Press":"Leverage_Chest_Press","Machine Lateral Raise":"Cable_Seated_Lateral_Raise","Machine Pulldown":"Close-Grip_Front_Lat_Pulldown","Machine Row":"Leverage_Iso_Row","Machine Shoulder Press":"Machine_Shoulder_Military_Press","Negative Pull-up (5 s lower)":"Pullups","Neutral-Grip Lat Pulldown":"V-Bar_Pulldown","One-Arm Dumbbell Row":"One-Arm_Dumbbell_Row","Overhead Cable Triceps Extension":"Cable_Rope_Overhead_Triceps_Extension","Pec Deck Fly":"Butterfly","Preacher Curl":"Machine_Preacher_Curls","Pull-up":"Pullups","Push-up":"Pushups","Reverse Lunge":"Dumbbell_Rear_Lunge","Reverse Pec Deck":"Reverse_Machine_Flyes","Romanian Deadlift":"Romanian_Deadlift","Rope Cable Hammer Curl":"Cable_Hammer_Curls_-_Rope_Attachment","Seated Cable Row":"Seated_Cable_Rows","Seated Dumbbell Shoulder Press":"Seated_Dumbbell_Press","Seated Leg Curl":"Seated_Leg_Curl","Single-Arm Cable Row":"Seated_One-arm_Cable_Pulley_Rows","Single-Arm Lat Pulldown":"One_Arm_Lat_Pulldown","Single-Leg Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","Single-Leg Dumbbell Calf Raise":"Standing_Dumbbell_Calf_Raise","Single-Leg Leg Press":"Leg_Press","Sissy Squat":"Weighted_Sissy_Squat","Slider / Swiss Ball Curl":"Ball_Leg_Curl","Smith Machine Bench":"Smith_Machine_Bench_Press","Smith Machine Calf Raise":"Smith_Machine_Calf_Raise","Smith Machine Squat":"Smith_Machine_Squat","Standing Barbell Overhead Press":"Standing_Military_Press","Standing Calf Raise":"Standing_Calf_Raises","Step-up":"Dumbbell_Step_Ups","T-Bar Row":"T-Bar_Row_with_Handle","Triceps Pressdown":"Triceps_Pushdown","Walking Lunge":"Dumbbell_Lunges","Weighted / Deficit Push-up":"Pushups","Weighted Dips":"Dips_-_Chest_Version"};
 const img = (name, k) => IMG[name] ? `img/${IMG[name]}-${k}.webp` : "";
 const yt = name => "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise form");
-const byId = id => ALL.find(d => d.id === id);
+const byId = id => ALL.find(d => d.id === id) || (id === "runna" ? RUNNA_DAY : undefined);
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DEFAULT_SCHEDULE = ["push", "easy", "pull", "legs", "", "upper", "quality"];
 const RUN5K = "https://rozbeh99.github.io/run5k/";
+
+// ================= Runna =================
+let RUNNA = null; // { changed, byDate: { "2026-10-29": [{ title, desc }] } } once runna.json loads
+const runnaOn = dISO => RUNNA?.byDate[dISO] || [];
+// With Runna synced, run days come from Runna and the schedule only places the lifts.
+function dayPlan(dISO) {
+  let id = S.schedule[dowIdx(new Date(dISO + "T12:00:00"))];
+  if (RUNNA && byId(id)?.run) id = "";
+  const runs = runnaOn(dISO);
+  return { id: id || (runs.length ? "runna" : ""), runs, both: !!(id && runs.length) };
+}
+function loadRunna() {
+  fetch("runna.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !Array.isArray(j.runs) || !j.runs.length) return;
+    const byDate = {};
+    for (const r of j.runs) (byDate[r.date] ||= []).push({ title: String(r.title || "Run"), desc: String(r.desc || "") });
+    RUNNA = { changed: j.changed, byDate, count: j.runs.length };
+    if (!open && !preview && !document.getElementById("layer").innerHTML) render();
+  }).catch(() => {});
+}
+const runnaRows = (dISO, act = "preview") => runnaOn(dISO).map(r =>
+  `<button class="row" type="button" data-act="${act}" data-day="runna" data-date="${dISO}" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">${esc(r.title)}</span><span class="t2">${esc(r.desc.split("\n").find(Boolean) || "From your Runna plan")}</span></span><span class="end">runna</span><span class="chev">›</span></button>`).join("");
 
 // ================= State (saved on this phone) =================
 const KEY = "gymlog-state";
@@ -448,11 +472,11 @@ function weekSessions() {
 function todayView() {
   const now = new Date(), di = dowIdx(now);
   const active = S.active && S.sessions[S.active];
-  const plannedId = S.schedule[di];
+  const plan = dayPlan(todayISO()), plannedId = plan.id;
   const loggedToday = Object.values(S.sessions).find(s => s.date === todayISO() && s.day === plannedId);
-  const planned = plannedId && byId(plannedId);
+  const planned = plannedId && (plannedId === "runna" ? { ...RUNNA_DAY, name: plan.runs[0].title } : byId(plannedId));
   const week = weekSessions();
-  const planCount = S.schedule.filter(Boolean).length;
+  const planCount = weekPlanCount();
   const vol = week.reduce((n, s) => n + sessionVolume(s), 0);
   let hero;
   if (active) {
@@ -463,24 +487,28 @@ function todayView() {
       `<button class="cta" type="button" data-act="resume">Resume workout</button>`);
   } else if (planned) {
     const isDone = loggedToday && (loggedToday.end || loggedToday.dist);
-    const tel = planned.run ? [["Session", "1", "run"], ["Pick", planned.opts.length, "options"], ["Effort", planned.id === "easy" ? "3–4" : "7–8", "RPE"]]
+    const tel = planned.id === "runna" ? [["Session", plan.runs.length, plan.runs.length > 1 ? "runs" : "run"], ["Plan", "Runna", ""], ["This week", week.length, "/" + planCount]]
+      : planned.run ? [["Session", "1", "run"], ["Pick", planned.opts.length, "options"], ["Effort", planned.id === "easy" ? "3–4" : "7–8", "RPE"]]
       : [["Exercises", planned.ex.length, ""], ["Sets", totalSets(planned), ""], ["Time", "~" + estMin(planned), "min"]];
     const btn = isDone ? `<button class="cta quiet" type="button" data-act="open" data-id="${loggedToday.id}">Done today · view log</button>`
+      : planned.id === "runna" ? `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="runna">Details</button><button class="cta" type="button" data-act="start" data-day="runna">Log run</button></div>`
       : planned.run ? `<div class="btnrow"><button class="cta" type="button" data-act="start" data-day="${planned.id}">Log run</button><a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Run 5K app</a></div>`
       : `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${planned.id}">Preview</button><button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button></div>`;
-    hero = heroCard(planned, isDone ? "Today · done" : "Next · today", planned.focus,
+    const sub = planned.id === "runna" ? plan.runs[0].desc.split("\n").find(Boolean) || planned.focus : planned.focus;
+    hero = heroCard(planned, isDone ? "Today · done" : "Next · today", sub,
       ring(week.length / planCount, `${week.length}/${planCount}`, "this week"), tel, btn);
   } else {
     hero = heroCard({ name: "Rest day", c: "--steel", glow: "rgba(154,167,180,.2)" }, "Today", "Recovery is when you grow. Walk, stretch, sleep well.",
       ring(week.length / planCount, `${week.length}/${planCount}`, "this week"),
-      [["This week", week.length, "/" + planCount], ["Volume", fmtK(vol), S.unit], ["Next", nextPlanned(di), ""]], "");
+      [["This week", week.length, "/" + planCount], ["Volume", fmtK(vol), S.unit], ["Next", nextPlanned(), ""]], "");
   }
   const ws = weekStart(), vs = new Date(ws.getTime() + weekOff * 7 * 864e5);
   const strip = WD.map((w, i) => {
     const date = new Date(vs.getTime() + i * 864e5), dISO = iso(date);
     const logged = sessionsOn(dISO);
-    const id = logged[0]?.day || S.schedule[i], d = id && byId(id);
-    return `<button type="button" class="wd ${dISO === todayISO() ? "today" : ""} ${logged.length ? "done" : ""}" data-act="day" data-date="${dISO}" data-day="${S.schedule[i]}" style="--c:${d ? `var(${d.c})` : "transparent"};font:inherit;color:inherit"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${d ? esc(d.name.replace(" Run", "")) : "Rest"}</span><span class="bar"></span></button>`;
+    const p = dayPlan(dISO), id = logged[0]?.day || p.id, d = id && byId(id);
+    const t = d ? d.name.replace(" Run", "") + (p.both && !logged.length ? " + Run" : "") : "Rest";
+    return `<button type="button" class="wd ${dISO === todayISO() ? "today" : ""} ${logged.length ? "done" : ""}" data-act="day" data-date="${dISO}" data-day="${p.id}" style="--c:${d ? `var(${d.c})` : "transparent"};font:inherit;color:inherit"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${esc(t)}</span><span class="bar"></span></button>`;
   }).join("");
   const ve = iso(new Date(vs.getTime() + 6 * 864e5)), vsISO = iso(vs);
   const weekLog = sessionsList().filter(s => s.date >= vsISO && s.date <= ve && isLogged(s));
@@ -491,6 +519,7 @@ function todayView() {
     <div class="head"><div class="eyebrow">Week of ${ws.toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${week.length} of ${planCount} done</div>
       <h1>${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h1></div>
     ${hero}
+    ${plan.both ? `<div class="group"><div class="label">Also today from Runna</div><div class="panel rows">${runnaRows(todayISO())}</div></div>` : ""}
     <div class="group">
       <div class="weeknav"><button type="button" class="navbtn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
         <span class="label" style="flex:1">${weekLabel}${weekOff ? ` · <a href="#" data-act="wk" data-d="0" style="color:var(--amber);text-decoration:none">back to today</a>` : ""}</span>
@@ -517,7 +546,14 @@ function summaryLine(s) {
   const n = doneSets(s);
   return `${n} set${n === 1 ? "" : "s"} · ${ex} exercise${ex === 1 ? "" : "s"} · ${fmtK(sessionVolume(s))} ${s.unit || S.unit}${s.end ? "" : " · not finished"}`;
 }
-function nextPlanned(di) { for (let k = 1; k <= 7; k++) { const id = S.schedule[(di + k) % 7]; if (id) return byId(id).name.replace(" Run", ""); } return "–"; }
+function nextPlanned() { for (let k = 1; k <= 7; k++) { const p = dayPlan(iso(new Date(Date.now() + k * 864e5))); if (p.id) return p.id === "runna" ? "Run" : byId(p.id).name.replace(" Run", ""); } return "–"; }
+// Lift days from the schedule plus the runs planned this week (Runna's if synced).
+function weekPlanCount() {
+  const ws = weekStart();
+  let n = 0;
+  for (let i = 0; i < 7; i++) { const p = dayPlan(iso(new Date(ws.getTime() + i * 864e5))); n += (p.id ? 1 : 0) + (p.both ? 1 : 0); }
+  return n || 1;
+}
 const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 
 // ================= Workout =================
@@ -528,7 +564,10 @@ function startSession(dayId, date) {
   const existing = Object.values(S.sessions).find(s => s.date === date && s.day === dayId);
   if (existing) { if (!d.run && !existing.end) S.active = existing.id; save(); open = existing.id; return render(), window.scrollTo(0, 0); }
   const id = "s" + Date.now().toString(36);
-  S.sessions[id] = d.run ? { id, day: dayId, date, start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
+  const rn = dayId === "runna" && runnaOn(date)[0];
+  S.sessions[id] = rn ? { id, day: dayId, date, start: Date.now(), variant: rn.title, plan: rn.desc }
+    : dayId === "runna" ? { id, day: dayId, date, start: Date.now(), variant: "Runna run" }
+    : d.run ? { id, day: dayId, date, start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
     : { id, day: dayId, date, start: Date.now(), unit: S.unit, ex: {} };
   if (!d.run) S.active = id;
   save(); open = id; render(); window.scrollTo(0, 0);
@@ -578,7 +617,10 @@ function previewView(pv) {
   const d = byId(pv.day), isToday = pv.date === todayISO(), past = pv.date < todayISO();
   const when = isToday ? "Today" : fmtDate(pv.date);
   const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
-  const body = d.run
+  const rn = d.id === "runna" ? runnaOn(pv.date) : [];
+  const body = d.id === "runna"
+    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}</div>`).join("") : `<div class="empty">No Runna session on this day.</div>`)
+    : d.run
     ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
     : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
         return `<article class="panel ex" style="--c:var(${d.c})">
@@ -594,8 +636,8 @@ function previewView(pv) {
     <section class="view" style="margin-top:14px">
       <p class="note">${esc(d.focus)}. Nothing is logged until you tap the button below.</p>
       ${body}
-      <button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>
-      ${d.run ? `<a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Open Run 5K</a>` : ""}
+      ${d.id === "runna" && !past && !isToday ? "" : `<button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>`}
+      ${d.run && d.id !== "runna" ? `<a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Open Run 5K</a>` : ""}
     </section>`;
 }
 function openDay(dISO, plannedId) {
@@ -603,6 +645,7 @@ function openDay(dISO, plannedId) {
   if (logged.length === 1) { open = logged[0].id; preview = null; render(); return window.scrollTo(0, 0); }
   if (logged.length > 1) return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows">${logged.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
   if (!plannedId) return toast(dISO < todayISO() ? "Rest day. Nothing logged." : "Rest day planned.");
+  if (dayPlan(dISO).both) { const d = byId(plannedId); return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows"><button class="row" type="button" data-act="preview" data-day="${d.id}" data-date="${dISO}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="chev">›</span></button>${runnaRows(dISO)}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`); }
   preview = { day: plannedId, date: dISO }; render(); window.scrollTo(0, 0);
 }
 function exEntry(s, exId) {
@@ -639,24 +682,25 @@ function finish(s) {
 function runView(s) {
   const d = byId(s.day);
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
-      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button><a class="clock" href="${RUN5K}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open Run 5K ↗</a></div>
-      <div class="wotitle"><h1 style="color:var(--ink)">${esc(d.name)}</h1></div></div></div>
+      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button>${d.id === "runna" ? "" : `<a class="clock" href="${RUN5K}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open Run 5K ↗</a>`}</div>
+      <div class="wotitle"><h1 style="color:var(--ink)">${esc(d.id === "runna" ? s.variant : d.name)}</h1></div></div></div>
     <section class="view" style="margin-top:14px">
       <div class="dateline"><label for="wo-date">Date</label><input type="date" id="wo-date" value="${s.date}"></div>
-      <div class="group"><div class="label">Pick the session</div><div class="opts">${d.opts.map(([n, desc]) =>
-        `<button class="opt" type="button" data-act="runopt" data-name="${esc(n)}" aria-pressed="${n === s.variant}" style="display:grid;gap:3px"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">${esc(n)}</b><span style="font-size:13px;color:var(--muted)">${esc(desc)}</span></button>`).join("")}</div></div>
+      ${d.id === "runna" ? (s.plan ? `<div class="group"><div class="label">Runna session</div><div class="panel pad prose"><p style="white-space:pre-line">${esc(s.plan)}</p></div></div>` : "")
+      : `<div class="group"><div class="label">Pick the session</div><div class="opts">${d.opts.map(([n, desc]) =>
+        `<button class="opt" type="button" data-act="runopt" data-name="${esc(n)}" aria-pressed="${n === s.variant}" style="display:grid;gap:3px"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">${esc(n)}</b><span style="font-size:13px;color:var(--muted)">${esc(desc)}</span></button>`).join("")}</div></div>`}
       <div class="panel pad" style="display:grid;gap:12px">
         <div class="grid2">
           <div class="field"><label for="run-dist">Distance km</label><input id="run-dist" inputmode="decimal" data-run="dist" value="${esc(s.dist)}" placeholder="5.0"></div>
           <div class="field"><label for="run-time">Time min</label><input id="run-time" inputmode="decimal" data-run="time" value="${esc(s.time)}" placeholder="30"></div>
           <div class="field"><label for="run-hr">Avg HR</label><input id="run-hr" inputmode="numeric" data-run="hr" value="${esc(s.hr)}" placeholder="optional"></div>
-          <div class="field"><label for="run-rpe">Effort 1–10</label><input id="run-rpe" inputmode="numeric" data-run="rpe" value="${esc(s.rpe)}" placeholder="${d.id === "easy" ? "3–4" : "7–8"}"></div>
+          <div class="field"><label for="run-rpe">Effort 1–10</label><input id="run-rpe" inputmode="numeric" data-run="rpe" value="${esc(s.rpe)}" placeholder="${d.id === "easy" ? "3–4" : d.id === "runna" ? "1–10" : "7–8"}"></div>
         </div>
         <div class="chip" id="pace" style="justify-self:start">${paceText(s)}</div>
         <div class="field"><label for="run-note">Notes</label><textarea id="run-note" data-run="note" placeholder="Route, weather, how the legs felt">${esc(s.note)}</textarea></div>
       </div>
       <button class="cta" type="button" data-act="close">Save run</button>
-      <p class="note">If you follow a session in the Run 5K app that day, log the distance and time here too so your whole week is in one place.</p>
+      <p class="note">${d.id === "runna" ? "Copy the distance and time from Runna after your run so your whole week is in one place." : "If you follow a session in the Run 5K app that day, log the distance and time here too so your whole week is in one place."}</p>
     </section>`;
 }
 function paceText(s) {
@@ -757,6 +801,9 @@ function setupView() {
     <div class="group"><div class="label">Units</div><div class="panel setline"><span>Weight unit</span><div class="seg"><button type="button" data-act="unit" data-u="kg" aria-pressed="${S.unit === "kg"}">kg</button><button type="button" data-act="unit" data-u="lb" aria-pressed="${S.unit === "lb"}">lb</button></div></div></div>
     <div class="group"><div class="label">Weekly schedule</div><div class="panel">${WD.map((w, i) => `<div class="setline"><label for="sch-${i}">${w}</label><select id="sch-${i}" data-sch="${i}">${opts(S.schedule[i])}</select></div>`).join("")}</div>
       <p class="note">Move days around to fit your week. Try to keep a rest day or easy run after Legs.</p></div>
+    <div class="group"><div class="label">Runna</div><div class="panel pad prose">${RUNNA
+      ? `<p>Synced ${RUNNA.count} Runna session${RUNNA.count === 1 ? "" : "s"}${RUNNA.changed ? `, last change picked up ${esc(new Date(RUNNA.changed).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}` : ""}.</p><p>Runs now come from Runna, so the run days in the schedule above are ignored. Lift days stay where you put them. New Runna changes show up within a few hours.</p>`
+      : `<p>Not connected. To show your Runna plan here: in Runna go to Profile, Settings, Calendar Sync and copy the link. Then add it on GitHub as a secret named <b>RUNNA_ICS_URL</b> in the gym-log repo's <a href="https://github.com/Rozbeh99/gym-log/settings/secrets/actions" target="_blank" rel="noopener" style="color:var(--amber)">Actions secrets</a>.</p>`}</div></div>
     <div class="group"><div class="label">Exercise swaps</div><div class="panel pad prose"><p>${Object.keys(S.swaps).length ? `${Object.keys(S.swaps).length} exercises swapped for what your gym has.` : "No swaps yet. Tap Swap on any exercise during a workout."}</p>
       ${Object.keys(S.swaps).length ? `<button class="sbtn" type="button" data-act="resetswaps" style="justify-self:start">Go back to the original exercises</button>` : ""}</div></div>
     <div class="group"><div class="label">Backup</div><div class="panel pad" style="display:grid;gap:10px">
@@ -829,7 +876,7 @@ document.addEventListener("click", ev => {
   const a = b.dataset.act, s = open && S.sessions[open];
   switch (a) {
     case "start": return startSession(b.dataset.day, b.dataset.date);
-    case "preview": preview = { day: b.dataset.day, date: todayISO() }; render(); return window.scrollTo(0, 0);
+    case "preview": closeSheet(); preview = { day: b.dataset.day, date: b.dataset.date || todayISO() }; render(); return window.scrollTo(0, 0);
     case "unpreview": preview = null; render(); return window.scrollTo(0, 0);
     case "day": return openDay(b.dataset.date, b.dataset.day);
     case "wk": ev.preventDefault(); weekOff = +b.dataset.d === 0 ? 0 : weekOff + +b.dataset.d; return render();
@@ -906,6 +953,7 @@ document.addEventListener("change", ev => {
 });
 
 render();
+loadRunna();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>

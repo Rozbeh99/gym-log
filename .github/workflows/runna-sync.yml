@@ -1,0 +1,42 @@
+# Copies the Runna calendar into docs/runna.json every few hours.
+# Setup: repo Settings > Secrets and variables > Actions > New secret named RUNNA_ICS_URL,
+# holding the link from Runna (Profile > Settings > Calendar Sync).
+# Optional: a variable named RUNNA_TZ (e.g. Europe/London) for timed sessions.
+name: Runna sync
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runna-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch Runna calendar
+        env:
+          RUNNA_ICS_URL: ${{ secrets.RUNNA_ICS_URL }}
+          RUNNA_TZ: ${{ vars.RUNNA_TZ }}
+        run: python3 tools/runna_sync.py
+      - name: Commit if changed
+        run: |
+          if [ -n "$(git status --porcelain docs/runna.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/runna.json
+            git commit -m "Sync Runna schedule"
+            git push
+          else
+            echo "Runna schedule unchanged."
+          fi

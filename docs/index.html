@@ -423,11 +423,72 @@ function runnaOn(dISO) {
   return here;
 }
 // With Runna synced, run days come from Runna and the schedule only places the lifts.
-function dayPlan(dISO) {
+function basePlan(dISO) {
   let id = S.moves && dISO in S.moves ? S.moves[dISO] : S.schedule[dowIdx(new Date(dISO + "T12:00:00"))];
   if (RUNNA && byId(id)?.run) id = "";
   const runs = runnaOn(dISO);
   return { id: id || (runs.length ? "runna" : ""), runs, both: !!(id && runs.length) };
+}
+// The calendar with missed lifts carried over (see rollWalk).
+function dayPlan(dISO) {
+  const p = basePlan(dISO), r = rolled(dISO);
+  if (!r) return p;
+  const lift = r.id, run = p.id && byId(p.id).run;
+  return { id: lift || (run ? p.id : ""), runs: p.runs, both: !!(lift && p.runs.length), from: r.from, behind: r.behind };
+}
+
+// ================= Carry-over =================
+// Lifts form a queue in plan order. Each day the calendar's lift joins the back of the queue, and the
+// front of the queue is due on any day without a run (rest days included, since a missed day was rest).
+// Logging a lift takes it off the queue; leaving it unlogged keeps it due the next day, so everything
+// after it shifts along. Runs keep their own dates. Days emptied by a move (legs or a Runna swap) stay empty.
+// S.roll = { since, skip: { date: liftId }, off }. Days before `since` follow the plain calendar.
+let ROLL = null;
+const isLift = id => !!id && id !== "runna" && !!byId(id) && !byId(id).run;
+function rolled(dISO) {
+  const R = S.roll;
+  if (!R || R.off || !R.since || dISO < R.since) return null;
+  if (!ROLL || ROLL.today !== todayISO()) ROLL = { today: todayISO(), next: R.since, q: [], credit: {}, days: {}, logs: null };
+  if (dISO > addDays(ROLL.today, 400)) return null;
+  while (ROLL.next <= dISO) rollStep(ROLL, R);
+  return ROLL.days[dISO];
+}
+function rollStep(W, R) {
+  const d = W.next, today = W.today;
+  if (!W.logs) {
+    W.logs = {};
+    for (const s of Object.values(S.sessions)) if (isLift(s.day) && s.date >= R.since && isLogged(s)) (W.logs[s.date] ||= []).push(s.day);
+  }
+  const p = basePlan(d), L = isLift(p.id) ? p.id : "";
+  const run = p.runs.length > 0 || (!!p.id && !!byId(p.id)?.run);
+  if (L) {
+    const c = W.credit[L];
+    if (c && daysBetween(c, d) <= 6) delete W.credit[L];
+    else {
+      W.q.push({ id: L, from: d });
+      // Never more than a week behind: past that, the oldest owed lift drops off the front.
+      const perWeek = Math.max(1, S.schedule.filter(isLift).length);
+      while (W.q.length > perWeek) W.q.shift();
+    }
+  }
+  const slot = !!L || (!run && !(S.moves && S.moves[d] === ""));
+  const take = id => { const i = W.q.findIndex(x => x.id === id); if (i < 0) return false; W.q.splice(i, 1); return true; };
+  const skipped = R.skip?.[d] && d <= today ? take(R.skip[d]) : false;
+  const head = slot && !(skipped && d < today) ? W.q[0] : null;
+  W.days[d] = { id: head ? head.id : "", from: head && head.from !== d ? head.from : "", behind: W.q.length - (head ? 1 : 0) };
+  if (d <= today) for (const id of W.logs[d] || []) if (!take(id)) W.credit[id] = d;
+  // From today on, assume each due lift gets done on its day.
+  if (d >= today && head && W.q[0] === head) W.q.shift();
+  W.next = addDays(d, 1);
+}
+function skipLift(id) {
+  const R = S.roll; if (!R) return;
+  (R.skip ||= {})[todayISO()] = id;
+  save(); toast(`${byId(id).name} skipped. The plan carries on from the next one.`); render();
+}
+function resetRoll() {
+  S.roll = { ...S.roll, since: todayISO(), skip: {} };
+  save(); toast("Back to your calendar"); render();
 }
 function loadRunna() {
   fetch("runna.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(j => {
@@ -499,10 +560,13 @@ function load() {
   for (const m of [s.moves, s.lite]) for (const k of Object.keys(m || {})) if (k < old) delete m[k];
   for (const [k, to] of Object.entries(s.runnaMoves || {})) if (to < old) delete s.runnaMoves[k];
   for (const [k, sw] of Object.entries(s.runnaSwaps || {})) if (sw.to < old && sw.dest < old) delete s.runnaSwaps[k];
+  s.roll ||= { since: new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), skip: {} };
+  for (const k of Object.keys(s.roll.skip || {})) if (k < s.roll.since) delete s.roll.skip[k];
   return s;
 }
 let saveT = null;
 function save(now) {
+  ROLL = null;
   clearTimeout(saveT);
   const w = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast("Couldn't save. Storage may be full or blocked."); } };
   now ? w() : (saveT = setTimeout(w, 300));
@@ -858,7 +922,7 @@ function todayView() {
       : planned.run ? `<div class="btnrow"><button class="cta" type="button" data-act="start" data-day="${planned.id}">Log run</button><a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Run 5K app</a></div>`
       : `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${planned.id}">Preview</button><button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button></div>`;
     const sub = planned.id === "runna" ? plan.runs[0].desc.split("\n").find(Boolean) || planned.focus : planned.focus;
-    hero = heroCard(planned, isDone ? "Today · done" : "Next · today", sub,
+    hero = heroCard(planned, isDone ? "Today · done" : plan.from ? "Carried over · today" : "Next · today", sub,
       ring(week.length / planCount, `${week.length}/${planCount}`, "this week"), tel, btn);
   } else {
     hero = heroCard({ name: "Rest day", c: "--steel", glow: "rgba(154,167,180,.2)" }, "Today", "Recovery is when you grow. Walk, stretch, sleep well.",
@@ -882,6 +946,7 @@ function todayView() {
     <div class="head"><div class="eyebrow">Week of ${ws.toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${week.length} of ${planCount} done</div>
       <h1>${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h1></div>
     ${hero}
+    ${active ? "" : rollCard(plan, loggedToday)}
     ${coachCards()}
     ${plan.both ? `<div class="group"><div class="label">Also today from Runna</div><div class="panel rows">${runnaRows(todayISO())}</div></div>` : ""}
     <div class="group">
@@ -895,9 +960,24 @@ function todayView() {
     <button class="cta quiet" type="button" data-act="others">Train something else</button>
   </section>`;
 }
+// Shown when today's lift was carried over, or lifts are owed on a run or rest day.
+function rollCard(plan, loggedToday) {
+  if (!plan.from && !plan.behind || loggedToday?.end) return "";
+  const back = `<button class="sbtn" type="button" data-act="rollreset">Back to my calendar</button>`;
+  if (plan.from && isLift(plan.id)) {
+    const n = byId(plan.id).name;
+    return `<div class="alert mode"><b>Carried over</b><span>${esc(n)} was due ${esc(fmtDate(plan.from))} and hasn't been done, so it's today's workout and everything after it has moved along.</span>
+      <div class="mini"><button class="sbtn" type="button" data-act="rollskip" data-day="${plan.id}">Skip ${esc(n)}</button>${back}</div></div>`;
+  }
+  let next = "";
+  for (let k = 1; k <= 7 && !next; k++) { const d = addDays(todayISO(), k), p = dayPlan(d); if (isLift(p.id)) next = `${byId(p.id).name} on ${fmtDate(d)}`; }
+  return `<div class="alert mode"><b>Plan shifted</b><span>${plan.behind} lift${plan.behind === 1 ? "" : "s"} carried over.${next ? ` Next up: ${esc(next)}.` : ""}</span><div class="mini">${back}</div></div>`;
+}
 function othersSheet() {
-  const plannedId = dayPlan(todayISO()).id;
-  sheet(`<h3>Train something else</h3><div class="panel rows">${ALL.filter(d => d.id !== plannedId).map(d =>
+  const plan = dayPlan(todayISO()), plannedId = plan.id;
+  const skip = S.roll && !S.roll.off && isLift(plannedId) && !sessionsOn(todayISO()).some(s => s.day === plannedId)
+    ? `<button class="cta quiet" type="button" data-act="rollskip" data-day="${plannedId}">Skip ${esc(byId(plannedId).name)} and move on</button>` : "";
+  sheet(`<h3>Train something else</h3>${skip}<div class="panel rows">${ALL.filter(d => d.id !== plannedId).map(d =>
     `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("")}</div>
     <p class="note" style="padding:0">Tap one to see the exercises first. Starting it logs it on today's date, and you can change the date inside.</p>
     <button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
@@ -1196,6 +1276,8 @@ function setupView() {
     <div class="group"><div class="label">Units</div><div class="panel setline"><span>Weight unit</span><div class="seg"><button type="button" data-act="unit" data-u="kg" aria-pressed="${S.unit === "kg"}">kg</button><button type="button" data-act="unit" data-u="lb" aria-pressed="${S.unit === "lb"}">lb</button></div></div></div>
     <div class="group"><div class="label">Weekly schedule</div><div class="panel">${WD.map((w, i) => `<div class="setline"><label for="sch-${i}">${w}</label><select id="sch-${i}" data-sch="${i}">${opts(S.schedule[i])}</select></div>`).join("")}</div>
       <p class="note">Move days around to fit your week. Try to keep a rest day or easy run after Legs.</p></div>
+    <div class="group"><div class="label">Missed workouts</div><div class="panel setline"><span>Carry a missed lift to the next day</span><div class="seg"><button type="button" data-act="rolloff" data-v="" aria-pressed="${!S.roll?.off}">On</button><button type="button" data-act="rolloff" data-v="1" aria-pressed="${!!S.roll?.off}">Off</button></div></div>
+      <p class="note">On: a lift you don't log stays due the next day without a run, and the rest of the plan shifts along. Runs keep their dates. Off: every day follows the schedule above.</p></div>
     <div class="group"><div class="label">Runna</div><div class="panel pad prose">${RUNNA
       ? `<p>Synced ${RUNNA.count} Runna session${RUNNA.count === 1 ? "" : "s"}${RUNNA.changed ? `, last change picked up ${esc(new Date(RUNNA.changed).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}` : ""}.</p><p>Runs now come from Runna, so the run days in the schedule above are ignored. Lift days stay where you put them. New Runna changes show up within a few hours.</p>`
       : `<p>Not connected. To show your Runna plan here: in Runna go to Profile, Settings, Calendar Sync and copy the link. Then add it on GitHub as a secret named <b>RUNNA_ICS_URL</b> in the gym-log repo's <a href="https://github.com/Rozbeh99/gym-log/settings/secrets/actions" target="_blank" rel="noopener" style="color:var(--amber)">Actions secrets</a>.</p>`}</div></div>
@@ -1353,6 +1435,9 @@ document.addEventListener("click", ev => {
     }
     case "stall": return stallSheet(b.dataset.name, b.dataset.ex);
     case "moveday": S.moves[b.dataset.from] = ""; S.moves[b.dataset.to] = "legs"; save(); toast(`Legs moved to ${fmtDate(b.dataset.to)}. Your usual week stays the same.`); return render();
+    case "rollskip": closeSheet(); return skipLift(b.dataset.day);
+    case "rollreset": return resetRoll();
+    case "rolloff": S.roll = { ...S.roll, off: !!b.dataset.v, since: todayISO(), skip: {} }; save(); return render();
     case "liteday": S.lite[b.dataset.date] = 1; save(); toast("That leg day will be lighter"); return render();
     case "deload": {
       S.deload = S.lastDeload = iso(weekStart());
@@ -1366,7 +1451,7 @@ document.addEventListener("click", ev => {
     case "rmetric": runMetric = b.dataset.m; return render();
     case "wipe": pendingDel.add("ALL"); return render();
     case "wipeno": pendingDel.delete("ALL"); return render();
-    case "wipeyes": S = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {} }; pendingDel.delete("ALL"); save(true); toast("Everything erased"); return render();
+    case "wipeyes": S = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {}, roll: { since: todayISO(), skip: {} } }; pendingDel.delete("ALL"); save(true); toast("Everything erased"); return render();
   }
 });
 document.addEventListener("input", ev => {
@@ -1390,6 +1475,7 @@ document.addEventListener("change", ev => {
       const d = JSON.parse(t);
       if (!d || typeof d.sessions !== "object") throw new Error();
       S = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {}, ...d };
+      S.roll ||= { since: todayISO(), skip: {} };
       save(true); toast(`Restored ${Object.keys(S.sessions).length} sessions`); render();
     }).catch(() => toast("That file isn't a Gym Log backup."));
   }

@@ -413,7 +413,15 @@ const RUN5K = "https://rozbeh99.github.io/run5k/";
 
 // ================= Runna =================
 let RUNNA = null; // { changed, byDate: { "2026-10-29": [{ title, desc }] } } once runna.json loads
-const runnaOn = dISO => RUNNA?.byDate[dISO] || [];
+// S.runnaMoves maps a Runna session id to the day you'd rather do it. A move lapses on its own once
+// Runna drops that session from the feed (finished, or moved in Runna itself).
+function runnaOn(dISO) {
+  if (!RUNNA) return [];
+  const mv = S.runnaMoves || {};
+  const here = (RUNNA.byDate[dISO] || []).filter(r => !mv[r.id] || mv[r.id] === dISO);
+  for (const [id, to] of Object.entries(mv)) { const r = RUNNA.all[id]; if (to === dISO && r && r.date !== dISO) here.push(r); }
+  return here;
+}
 // With Runna synced, run days come from Runna and the schedule only places the lifts.
 function dayPlan(dISO) {
   let id = S.moves && dISO in S.moves ? S.moves[dISO] : S.schedule[dowIdx(new Date(dISO + "T12:00:00"))];
@@ -424,10 +432,13 @@ function dayPlan(dISO) {
 function loadRunna() {
   fetch("runna.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(j => {
     if (!j || !Array.isArray(j.runs) || !j.runs.length) return;
-    const byDate = {};
+    const byDate = {}, all = {};
     const safe = u => /^https:\/\/club\.runna\.com\//.test(u || "") ? u : "";
-    for (const r of j.runs) (byDate[r.date] ||= []).push({ id: String(r.id || ""), title: String(r.title || "Run"), desc: String(r.desc || ""), link: safe(r.link), done: !!r.done, dist: String(r.dist || ""), time: String(r.time || "") });
-    RUNNA = { changed: j.changed, byDate, count: j.runs.length };
+    for (const r of j.runs) {
+      const x = { id: String(r.id || ""), date: String(r.date), title: String(r.title || "Run"), desc: String(r.desc || ""), link: safe(r.link), done: !!r.done, dist: String(r.dist || ""), time: String(r.time || "") };
+      (byDate[x.date] ||= []).push(x); if (x.id) all[x.id] = x;
+    }
+    RUNNA = { changed: j.changed, byDate, all, count: j.runs.length };
     importRunna();
     if (!open && !preview && !document.getElementById("layer").innerHTML) render();
   }).catch(() => {});
@@ -446,6 +457,11 @@ function importRunna() {
   }
   save(true);
 }
+function runnaMoveBtn(r, shownOn) {
+  if (r.done || !r.id) return "";
+  if (r.date !== shownOn) return `<button class="cta quiet" type="button" data-act="runnamove" data-id="${esc(r.id)}" data-to="">Move back to ${fmtDate(r.date)}</button>`;
+  return r.date > todayISO() ? `<button class="cta" type="button" data-act="runnamove" data-id="${esc(r.id)}" data-to="${todayISO()}">Do it today instead</button>` : "";
+}
 const runnaLink = u => u ? `<a class="cta quiet" href="${esc(u)}" target="_blank" rel="noopener">Open in Runna</a>` : "";
 const runnaRows = (dISO, act = "preview") => runnaOn(dISO).map(r =>
   `<button class="row" type="button" data-act="${act}" data-day="runna" data-date="${dISO}" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">${esc(r.title)}</span><span class="t2">${esc(r.desc.split("\n").find(Boolean) || "From your Runna plan")}</span></span><span class="end">runna</span><span class="chev">›</span></button>`).join("");
@@ -461,6 +477,7 @@ function load() {
   // One-off day moves and lighter-leg flags only matter for the next couple of weeks.
   const old = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
   for (const m of [s.moves, s.lite]) for (const k of Object.keys(m || {})) if (k < old) delete m[k];
+  for (const [k, to] of Object.entries(s.runnaMoves || {})) if (to < old) delete s.runnaMoves[k];
   return s;
 }
 let saveT = null;
@@ -954,7 +971,7 @@ function previewView(pv) {
   const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
   const rn = d.id === "runna" ? runnaOn(pv.date) : [];
   const body = d.id === "runna"
-    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}</div>${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
+    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}${r.date !== pv.date ? `<p class="note" style="padding:0">Moved here from ${fmtDate(r.date)}.</p>` : ""}</div>${runnaMoveBtn(r, pv.date)}${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
     : d.run
     ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
     : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
@@ -1235,6 +1252,13 @@ document.addEventListener("click", ev => {
   const a = b.dataset.act, s = open && S.sessions[open];
   switch (a) {
     case "start": return startSession(b.dataset.day, b.dataset.date);
+    case "runnamove": {
+      const mv = S.runnaMoves || (S.runnaMoves = {}), r = RUNNA?.all[b.dataset.id];
+      if (b.dataset.to) mv[b.dataset.id] = b.dataset.to; else delete mv[b.dataset.id];
+      save(); toast(b.dataset.to ? "Moved to today. Log it here when you're done." : `Back on ${r ? fmtDate(r.date) : "its day"}.`);
+      if (b.dataset.to) preview = { day: "runna", date: b.dataset.to }; else { preview = null; }
+      render(); return window.scrollTo(0, 0);
+    }
     case "preview": closeSheet(); preview = { day: b.dataset.day, date: b.dataset.date || todayISO() }; render(); return window.scrollTo(0, 0);
     case "unpreview": preview = null; render(); return window.scrollTo(0, 0);
     case "day": return openDay(b.dataset.date, b.dataset.day);

@@ -20,6 +20,13 @@ Run the workflow once from the Actions tab to sync straight away. The link stays
 `docs/runna.json` (session titles, dates, descriptions, and distance and time of finished runs) is public like the rest of the site. Location, laps and PBs are left out.
 Runs finished in Runna are added to the log automatically.
 
+## Weigh-in reminder
+
+The `Weigh-in reminder` Action (`.github/workflows/weigh-in.yml`) sends a push notification
+through [ntfy](https://ntfy.sh) every Monday at 06:00 UTC. Tapping it opens Gym Log's weigh-in.
+To turn it on: install the ntfy app, subscribe to a hard-to-guess topic name, and add that name
+as a repo secret named `NTFY_TOPIC`. Run the workflow from the Actions tab to test it.
+
 The site is served by GitHub Pages from `docs/` on `main`. The log is saved on the device;
 use Setup > Save backup before switching phones.
 

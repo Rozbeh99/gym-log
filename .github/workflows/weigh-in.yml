@@ -1,0 +1,28 @@
+# Monday morning weigh-in reminder, pushed to your phone by ntfy (https://ntfy.sh).
+# Setup: repo Settings > Secrets and variables > Actions > New secret named NTFY_TOPIC,
+# holding the topic you subscribed to in the ntfy app. Tapping the notification opens Gym Log's weigh-in.
+name: Weigh-in reminder
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # 07:00 in Stockholm in winter, 08:00 in summer. GitHub can run it a little late.
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send ntfy notification
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then
+            echo "::notice::NTFY_TOPIC secret is not set, skipping the reminder."
+            exit 0
+          fi
+          curl -fsS \
+            -H "Title: Weigh-in Monday" \
+            -H "Tags: scales" \
+            -H "Click: https://rozbeh99.github.io/gym-log/?weigh=1" \
+            -d "Step on the scale before breakfast, then tap here to log it." \
+            "https://ntfy.sh/$NTFY_TOPIC"

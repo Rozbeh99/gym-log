@@ -107,6 +107,10 @@ section.view { display: grid; gap: 22px; }
 .wd .t { font-size: 10px; font-weight: 600; color: var(--muted); line-height: 1; }
 .wd .bar { width: 18px; height: 3px; border-radius: 2px; background: var(--c, transparent); opacity: .35; }
 .wd.done .bar { opacity: 1; box-shadow: 0 0 10px var(--c); }
+.weeknav { display: flex; align-items: center; gap: 8px; }
+.navbtn { width: 34px; height: 30px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel); font-size: 18px; line-height: 1; color: var(--ink); }
+button.wd { cursor: pointer; }
+.wd.done { background: var(--panel-2); }
 .wd.today { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
 
 /* Lists */
@@ -169,6 +173,21 @@ details.cue p { margin: 6px 0 0; font-size: 14px; }
 .field input { font-family: var(--mono); }
 textarea { resize: vertical; min-height: 70px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Exercise photos */
+.demo { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; max-width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #15120f; padding: 0; }
+.demo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.demo img + img { animation: frame 2.4s steps(1, end) infinite; }
+@keyframes frame { 0% { opacity: 0; } 50% { opacity: 1; } }
+.demo .tag { position: absolute; left: 8px; bottom: 8px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; background: rgba(11,10,9,.78); color: var(--ink); padding: 4px 8px; border-radius: 6px; }
+.watch { font-size: 13px; font-weight: 600; color: var(--amber); text-decoration: none; }
+.thumb { width: 52px; height: 40px; border-radius: 7px; object-fit: cover; flex: none; background: #15120f; border: 1px solid var(--line); }
+.thumb.none { display: grid; place-items: center; color: var(--faint); font-size: 16px; }
+.frames { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.frames figure { margin: 0; display: grid; gap: 4px; }
+.frames img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #15120f; }
+.frames figcaption { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .demo img + img { display: none; } }
 
 /* Bottom sheet */
 .scrim { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; }
@@ -332,6 +351,10 @@ const RUNS = [
            ["Hills 8 × 30 s", "10 min easy, 8 × 30 s hard uphill, walk down, 10 min easy."]] },
 ];
 const ALL = [...DAYS, ...RUNS];
+// Photos: Free Exercise DB (public domain, github.com/yuhonas/free-exercise-db). Some swaps borrow the closest match.
+const IMG = {"45° Back Extension":"Hyperextensions_Back_Extensions","Ab Wheel Rollout":"Barbell_Ab_Rollout_-_On_Knees","Assisted Nordic Curl":"Natural_Glute_Ham_Raise","Assisted Pull-up":"Band_Assisted_Pull-Up","Back Squat":"Barbell_Full_Squat","Band Curl":"Close-Grip_EZ-Bar_Curl_with_Band","Band Fly":"Cross_Over_-_With_Bands","Band Hammer Curl":"Hammer_Curls","Band Lateral Raise":"Lateral_Raise_-_With_Bands","Band Leg Curl":"Seated_Band_Hamstring_Curl","Band Overhead Extension":"Speed_Band_Overhead_Triceps","Band Pressdown":"Triceps_Pushdown_-_Rope_Attachment","Band Pull-Apart":"Band_Pull_Apart","Band Row":"Seated_Cable_Rows","Band-Assisted Chin-up":"Band_Assisted_Pull-Up","Band-Assisted Pull-up":"Band_Assisted_Pull-Up","Barbell Bench Press":"Barbell_Bench_Press_-_Medium_Grip","Barbell Row":"Bent_Over_Barbell_Row","Bayesian Cable Curl":"Standing_One-Arm_Cable_Curl","Bent-Over Rear Delt Fly":"Seated_Bent-Over_Rear_Delt_Raise","Bulgarian Split Squat":"Split_Squat_with_Dumbbells","Cable Crossover Fly":"Cable_Crossover","Cable Crunch":"Cable_Crunch","Cable Curl":"Standing_Biceps_Cable_Curl","Cable Lateral Raise":"Cable_Seated_Lateral_Raise","Chest-Supported Dumbbell Row":"Dumbbell_Incline_Row","Chin-up":"Chin-Up","Close-Grip Bench Press":"Close-Grip_Barbell_Bench_Press","Close-Grip Push-up":"Push-Ups_-_Close_Triceps_Position","Cross-Body Hammer Curl":"Cross_Body_Hammer_Curl","Decline Crunch":"Decline_Crunch","Diamond Push-up":"Push-Ups_-_Close_Triceps_Position","Dips":"Dips_-_Triceps_Version","Dumbbell Bench Press":"Dumbbell_Bench_Press","Dumbbell Curl":"Dumbbell_Bicep_Curl","Dumbbell Fly":"Dumbbell_Flyes","Dumbbell French Press":"Standing_Dumbbell_Triceps_Extension","Dumbbell Lateral Raise":"Side_Lateral_Raise","Dumbbell Overhead Extension":"Standing_Dumbbell_Triceps_Extension","Dumbbell Pullover":"Straight-Arm_Dumbbell_Pullover","Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","EZ-Bar Curl":"EZ-Bar_Curl","EZ-Bar Skull Crusher":"EZ-Bar_Skullcrusher","Face Pull":"Face_Pull","Feet-Elevated Push-up":"Push-Ups_With_Feet_Elevated","Flat Dumbbell Press":"Dumbbell_Bench_Press","Goblet Squat":"Goblet_Squat","Good Morning":"Good_Morning","Hack Squat":"Hack_Squat","Hammer Curl":"Hammer_Curls","Hanging Leg Raise":"Hanging_Leg_Raise","Incline Barbell Press":"Barbell_Incline_Bench_Press_-_Medium_Grip","Incline Dumbbell Curl":"Incline_Dumbbell_Curl","Incline Dumbbell Press":"Incline_Dumbbell_Press","Incline Smith Press":"Smith_Machine_Incline_Bench_Press","Inverted Row":"Inverted_Row","Lat Pulldown":"Wide-Grip_Lat_Pulldown","Lean-Away Dumbbell Lateral":"One-Arm_Side_Laterals","Leg Extension":"Leg_Extensions","Leg Press":"Leg_Press","Leg Press Calf Raise":"Calf_Press_On_The_Leg_Press_Machine","Low-to-High Cable Fly":"Low_Cable_Crossover","Lying Leg Curl":"Lying_Leg_Curls","Machine Chest Press":"Leverage_Chest_Press","Machine Lateral Raise":"Cable_Seated_Lateral_Raise","Machine Pulldown":"Close-Grip_Front_Lat_Pulldown","Machine Row":"Leverage_Iso_Row","Machine Shoulder Press":"Machine_Shoulder_Military_Press","Negative Pull-up (5 s lower)":"Pullups","Neutral-Grip Lat Pulldown":"V-Bar_Pulldown","One-Arm Dumbbell Row":"One-Arm_Dumbbell_Row","Overhead Cable Triceps Extension":"Cable_Rope_Overhead_Triceps_Extension","Pec Deck Fly":"Butterfly","Preacher Curl":"Machine_Preacher_Curls","Pull-up":"Pullups","Push-up":"Pushups","Reverse Lunge":"Dumbbell_Rear_Lunge","Reverse Pec Deck":"Reverse_Machine_Flyes","Romanian Deadlift":"Romanian_Deadlift","Rope Cable Hammer Curl":"Cable_Hammer_Curls_-_Rope_Attachment","Seated Cable Row":"Seated_Cable_Rows","Seated Dumbbell Shoulder Press":"Seated_Dumbbell_Press","Seated Leg Curl":"Seated_Leg_Curl","Single-Arm Cable Row":"Seated_One-arm_Cable_Pulley_Rows","Single-Arm Lat Pulldown":"One_Arm_Lat_Pulldown","Single-Leg Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","Single-Leg Dumbbell Calf Raise":"Standing_Dumbbell_Calf_Raise","Single-Leg Leg Press":"Leg_Press","Sissy Squat":"Weighted_Sissy_Squat","Slider / Swiss Ball Curl":"Ball_Leg_Curl","Smith Machine Bench":"Smith_Machine_Bench_Press","Smith Machine Calf Raise":"Smith_Machine_Calf_Raise","Smith Machine Squat":"Smith_Machine_Squat","Standing Barbell Overhead Press":"Standing_Military_Press","Standing Calf Raise":"Standing_Calf_Raises","Step-up":"Dumbbell_Step_Ups","T-Bar Row":"T-Bar_Row_with_Handle","Triceps Pressdown":"Triceps_Pushdown","Walking Lunge":"Dumbbell_Lunges","Weighted / Deficit Push-up":"Pushups","Weighted Dips":"Dips_-_Chest_Version"};
+const img = (name, k) => IMG[name] ? `img/${IMG[name]}-${k}.webp` : "";
+const yt = name => "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise form");
 const byId = id => ALL.find(d => d.id === id);
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DEFAULT_SCHEDULE = ["push", "easy", "pull", "legs", "", "upper", "quality"];
@@ -395,12 +418,15 @@ function toast(msg) {
 // ================= Routing =================
 let tab = "today";
 let open = null; // id of the session being shown full-screen
+let preview = null; // { day, date } when looking at a plan without logging it
+let weekOff = 0; // 0 = this week, -1 = last week, ...
 let histEx = null;
 const pendingDel = new Set();
-function go(t) { tab = t; open = null; render(); window.scrollTo(0, 0); }
+function go(t) { tab = t; open = null; preview = null; render(); window.scrollTo(0, 0); }
 function render() {
   const v = document.getElementById("view");
-  document.getElementById("tabbar").hidden = !!open;
+  document.getElementById("tabbar").hidden = !!(open || preview);
+  if (!open && preview) { v.innerHTML = previewView(preview); return; }
   document.querySelectorAll("#tabbar [data-tab]").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
   if (open && S.sessions[open]) { v.innerHTML = byId(S.sessions[open].day).run ? runView(S.sessions[open]) : workoutView(S.sessions[open]); tickClock(); return; }
   open = null;
@@ -441,7 +467,7 @@ function todayView() {
       : [["Exercises", planned.ex.length, ""], ["Sets", totalSets(planned), ""], ["Time", "~" + estMin(planned), "min"]];
     const btn = isDone ? `<button class="cta quiet" type="button" data-act="open" data-id="${loggedToday.id}">Done today · view log</button>`
       : planned.run ? `<div class="btnrow"><button class="cta" type="button" data-act="start" data-day="${planned.id}">Log run</button><a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Run 5K app</a></div>`
-      : `<button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button>`;
+      : `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${planned.id}">Preview</button><button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button></div>`;
     hero = heroCard(planned, isDone ? "Today · done" : "Next · today", planned.focus,
       ring(week.length / planCount, `${week.length}/${planCount}`, "this week"), tel, btn);
   } else {
@@ -449,21 +475,32 @@ function todayView() {
       ring(week.length / planCount, `${week.length}/${planCount}`, "this week"),
       [["This week", week.length, "/" + planCount], ["Volume", fmtK(vol), S.unit], ["Next", nextPlanned(di), ""]], "");
   }
-  const ws = weekStart();
+  const ws = weekStart(), vs = new Date(ws.getTime() + weekOff * 7 * 864e5);
   const strip = WD.map((w, i) => {
-    const date = new Date(ws.getTime() + i * 864e5), dISO = iso(date), id = S.schedule[i], d = id && byId(id);
-    const done = Object.values(S.sessions).some(s => s.date === dISO && (s.end || doneSets(s) > 0 || s.dist));
-    return `<div class="wd ${i === di ? "today" : ""} ${done ? "done" : ""}" style="--c:${d ? `var(${d.c})` : "transparent"}"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${d ? esc(d.name.replace(" Run", "")) : "Rest"}</span><span class="bar"></span></div>`;
+    const date = new Date(vs.getTime() + i * 864e5), dISO = iso(date);
+    const logged = sessionsOn(dISO);
+    const id = logged[0]?.day || S.schedule[i], d = id && byId(id);
+    return `<button type="button" class="wd ${dISO === todayISO() ? "today" : ""} ${logged.length ? "done" : ""}" data-act="day" data-date="${dISO}" data-day="${S.schedule[i]}" style="--c:${d ? `var(${d.c})` : "transparent"};font:inherit;color:inherit"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${d ? esc(d.name.replace(" Run", "")) : "Rest"}</span><span class="bar"></span></button>`;
   }).join("");
+  const ve = iso(new Date(vs.getTime() + 6 * 864e5)), vsISO = iso(vs);
+  const weekLog = sessionsList().filter(s => s.date >= vsISO && s.date <= ve && isLogged(s));
+  const weekLabel = weekOff === 0 ? "This week" : weekOff === -1 ? "Last week" : weekOff === 1 ? "Next week" : "Week of " + vs.toLocaleDateString(undefined, { day: "numeric", month: "short" });
   const others = ALL.filter(d => d.id !== plannedId).map(d =>
-    `<button class="row" type="button" data-act="start" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("");
+    `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("");
   return `<section class="view">
     <div class="head"><div class="eyebrow">Week of ${ws.toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${week.length} of ${planCount} done</div>
       <h1>${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h1></div>
     ${hero}
-    <div class="group"><div class="label">This week</div><div class="week">${strip}</div></div>
+    <div class="group">
+      <div class="weeknav"><button type="button" class="navbtn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
+        <span class="label" style="flex:1">${weekLabel}${weekOff ? ` · <a href="#" data-act="wk" data-d="0" style="color:var(--amber);text-decoration:none">back to today</a>` : ""}</span>
+        <button type="button" class="navbtn" data-act="wk" data-d="1" aria-label="Next week">›</button></div>
+      <div class="week">${strip}</div>
+      <p class="note">Tap a day to see what you did, or what's planned.</p>
+      ${weekLog.length ? `<div class="panel rows">${weekLog.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)} · ${fmtDate(s.date)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div>` : weekOff < 0 ? `<div class="empty" style="padding:18px">Nothing logged that week.</div>` : ""}
+    </div>
     <div class="group"><div class="label">Train something else</div><div class="panel rows">${others}</div>
-      <p class="note">Missed a day? Start any session from here. It's logged on today's date, and you can change the date inside.</p></div>
+      <p class="note">Tap one to see the exercises first. Starting it logs it on today's date, and you can change the date inside.</p></div>
   </section>`;
 }
 function heroCard(d, when, sub, ringHtml, tel, btn) {
@@ -472,17 +509,27 @@ function heroCard(d, when, sub, ringHtml, tel, btn) {
     <div class="telemetry">${tel.map(([k, v, u]) => `<div><span class="k">${k}</span><span class="v">${v}<small>${u}</small></span></div>`).join("")}</div>
     ${btn}</div>`;
 }
+const isLogged = s => !!(s.end || doneSets(s) > 0 || s.dist || (s.ex && Object.values(s.ex).some(e => e.sets.some(filled))));
+const sessionsOn = dISO => sessionsList().filter(s => s.date === dISO && isLogged(s));
+function summaryLine(s) {
+  if (byId(s.day).run) return [s.variant, s.dist && s.dist + " km", s.time && s.time + " min"].filter(Boolean).join(" · ");
+  const ex = Object.values(s.ex || {}).filter(e => e.sets.some(filled)).length;
+  const n = doneSets(s);
+  return `${n} set${n === 1 ? "" : "s"} · ${ex} exercise${ex === 1 ? "" : "s"} · ${fmtK(sessionVolume(s))} ${s.unit || S.unit}${s.end ? "" : " · not finished"}`;
+}
 function nextPlanned(di) { for (let k = 1; k <= 7; k++) { const id = S.schedule[(di + k) % 7]; if (id) return byId(id).name.replace(" Run", ""); } return "–"; }
 const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 
 // ================= Workout =================
-function startSession(dayId) {
+function startSession(dayId, date) {
   const d = byId(dayId);
-  const existing = Object.values(S.sessions).find(s => s.date === todayISO() && s.day === dayId);
+  date = date && date <= todayISO() ? date : todayISO();
+  preview = null;
+  const existing = Object.values(S.sessions).find(s => s.date === date && s.day === dayId);
   if (existing) { if (!d.run && !existing.end) S.active = existing.id; save(); open = existing.id; return render(), window.scrollTo(0, 0); }
   const id = "s" + Date.now().toString(36);
-  S.sessions[id] = d.run ? { id, day: dayId, date: todayISO(), start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
-    : { id, day: dayId, date: todayISO(), start: Date.now(), unit: S.unit, ex: {} };
+  S.sessions[id] = d.run ? { id, day: dayId, date, start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
+    : { id, day: dayId, date, start: Date.now(), unit: S.unit, ex: {} };
   if (!d.run) S.active = id;
   save(); open = id; render(); window.scrollTo(0, 0);
 }
@@ -494,6 +541,7 @@ function workoutView(s) {
       <div class="prog"><i id="wo-prog" style="width:${Math.min(100, done / tot * 100)}%"></i></div></div></div>
     <section class="view" style="margin-top:14px">
       <div class="dateline"><label for="wo-date">Date</label><input type="date" id="wo-date" value="${s.date}"><span>· weights in ${esc(s.unit || S.unit)}</span></div>
+      ${s.end ? `<div class="panel pad"><div class="telemetry" style="border:0"><div><span class="k">Sets</span><span class="v">${done}<small>/${tot}</small></span></div><div><span class="k">Volume</span><span class="v">${fmtK(sessionVolume(s))}<small>${esc(s.unit || S.unit)}</small></span></div><div><span class="k">Time</span><span class="v">${(s.end - s.start) / 60000 > 240 ? "–" : Math.max(1, Math.round((s.end - s.start) / 60000))}<small>min</small></span></div></div><p class="note" style="padding:0;margin-top:8px">Finished workout. You can still fix any numbers below.</p></div>` : ""}
       ${d.ex.map((ex, i) => exCard(s, d, ex, i)).join("")}
       <div class="panel pad field"><label for="wo-note">Notes</label><textarea id="wo-note" placeholder="Sleep, energy, anything that felt off">${esc(s.note)}</textarea></div>
       ${s.end ? `<button class="cta quiet" type="button" data-act="close">Close</button>` : `<button class="cta" type="button" data-act="finish">Finish workout</button>`}
@@ -510,6 +558,8 @@ function exCard(s, d, ex, i) {
   return `<article class="panel ex ${complete ? "complete" : ""}" style="--c:var(${d.c})" data-ex="${ex.id}">
     <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(d.ex.length).padStart(2, "0")}${v !== ex.name ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
       <button class="swap" type="button" data-act="swap" data-ex="${ex.id}">${ICON.swap}Swap</button></div>
+    ${IMG[v] ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${ex.id}" aria-label="Show how to do ${esc(v)}"><img src="${img(v, 0)}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>`
+      : `<a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
     <div class="chips"><span class="chip"><b>${ex.sets}</b> × <b>${ex.lo}–${ex.hi}</b></span><span class="chip">RPE <b>${ex.rpe}</b></span><span class="chip">Rest <b>${fmtRest(ex.rest)}</b></span>${ready ? `<span class="chip good">▲ Add weight</span>` : ""}</div>
     <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join("  ")}</b>` : "First time with this exercise. Pick a weight you could lift for a few more reps than the target."}</div>
     <div class="sets">
@@ -521,8 +571,39 @@ function exCard(s, d, ex, i) {
           <button class="tick" type="button" data-act="tick" data-ex="${ex.id}" data-k="${k}" aria-pressed="${!!x.done}" aria-label="Set ${k + 1} done">${ICON.tick}</button></div>`; }).join("")}
     </div>
     <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Set</button>${sets.length > ex.sets ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">− Set</button>` : ""}</div>
-    <details class="cue"><summary>How to do it</summary><p>${esc(ex.cue)}</p></details>
+    <details class="cue"><summary>How to do it</summary><p>${esc(ex.cue)}</p><p><a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch a video</a></p></details>
   </article>`;
+}
+function previewView(pv) {
+  const d = byId(pv.day), isToday = pv.date === todayISO(), past = pv.date < todayISO();
+  const when = isToday ? "Today" : fmtDate(pv.date);
+  const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
+  const body = d.run
+    ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
+    : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
+        return `<article class="panel ex" style="--c:var(${d.c})">
+          <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(d.ex.length).padStart(2, "0")}${v !== ex.name ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
+            <button class="swap" type="button" data-act="swap" data-day="${d.id}" data-ex="${ex.id}">${ICON.swap}Swap</button></div>
+          ${IMG[v] ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${ex.id}" aria-label="Show how to do ${esc(v)}"><img src="${img(v, 0)}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>` : `<a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
+          <div class="chips"><span class="chip"><b>${ex.sets}</b> × <b>${ex.lo}–${ex.hi}</b></span><span class="chip">RPE <b>${ex.rpe}</b></span><span class="chip">Rest <b>${fmtRest(ex.rest)}</b></span></div>
+          <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${last.sets.filter(filled).map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join("  ")}</b>` : "No log yet for this one."}</div>
+          <p class="note" style="padding:0">${esc(ex.cue)}</p></article>`; }).join("");
+  return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
+      <div class="wotop"><button class="back" type="button" data-act="unpreview">‹ Back</button><span class="clock">Preview · ${esc(when)}</span></div>
+      <div class="wotitle"><h1 style="color:var(${d.c})">${esc(d.name)}</h1><span class="num" style="color:var(--muted);font-size:13px">${d.run ? "run" : `${d.ex.length} ex · ${totalSets(d)} sets · ~${estMin(d)} min`}</span></div></div></div>
+    <section class="view" style="margin-top:14px">
+      <p class="note">${esc(d.focus)}. Nothing is logged until you tap the button below.</p>
+      ${body}
+      <button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>
+      ${d.run ? `<a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Open Run 5K</a>` : ""}
+    </section>`;
+}
+function openDay(dISO, plannedId) {
+  const logged = sessionsOn(dISO);
+  if (logged.length === 1) { open = logged[0].id; preview = null; render(); return window.scrollTo(0, 0); }
+  if (logged.length > 1) return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows">${logged.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
+  if (!plannedId) return toast(dISO < todayISO() ? "Rest day. Nothing logged." : "Rest day planned.");
+  preview = { day: plannedId, date: dISO }; render(); window.scrollTo(0, 0);
 }
 function exEntry(s, exId) {
   const ex = byId(s.day).ex.find(e => e.id === exId);
@@ -590,7 +671,7 @@ function planView() {
   const days = ALL.map(d => `<details class="panel" style="--c:var(${d.c})">
       <summary class="row" style="cursor:pointer;list-style:none"><span class="stripe"></span><span class="main"><span class="t1" style="font-family:var(--display);font-size:21px;text-transform:uppercase;font-weight:700">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : totalSets(d) + " sets"}</span><span class="chev">⌄</span></summary>
       <div class="rows" style="border-top:1px solid var(--line)">${d.run ? d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")
-        : d.ex.map(ex => `<div class="row"><span class="main"><span class="t1">${esc(variantOf(ex))}</span><span class="t2">Swaps: ${ex.alts.map(a => esc(a[0])).join(" · ")}</span></span><span class="end">${ex.sets}×${ex.lo}–${ex.hi}</span></div>`).join("")}</div>
+        : d.ex.map(ex => `<div class="row">${IMG[variantOf(ex)] ? `<img class="thumb" src="${img(variantOf(ex), 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span class="main"><span class="t1">${esc(variantOf(ex))}</span><span class="t2">Swaps: ${ex.alts.map(a => esc(a[0])).join(" · ")}</span></span><span class="end">${ex.sets}×${ex.lo}–${ex.hi}</span></div>`).join("")}</div>
     </details>`).join("");
   return `<section class="view">
     <div class="head"><div class="eyebrow">4 lifts · 2 runs</div><h1>The plan</h1><p>Push, Pull, Legs and an Upper day hit every muscle about twice a week. Tap a day to see its exercises and swaps.</p></div>
@@ -606,7 +687,8 @@ function planView() {
     <div class="group"><div class="label">Hard sets per muscle each week</div><div class="panel pad"><table class="vol"><tbody>
       <tr><td>Chest</td><td>11</td></tr><tr><td>Back</td><td>14</td></tr><tr><td>Side delts</td><td>6 + pressing</td></tr><tr><td>Rear delts</td><td>5</td></tr>
       <tr><td>Quads</td><td>8 + running</td></tr><tr><td>Hamstrings</td><td>6</td></tr><tr><td>Biceps</td><td>7 + rows</td></tr><tr><td>Triceps</td><td>9 + pressing</td></tr></tbody></table>
-      <p class="note" style="margin-top:10px;padding:0">Built on the evidence-based principles coaches like Jeff Nippard teach: roughly 10–20 hard sets per muscle a week, training close to failure, exercises that load the stretched position, and steady overload. An original plan, not a copy of a paid program.</p></div></div>
+      <p class="note" style="margin-top:10px;padding:0">Exercise photos from the public-domain <a class="watch" href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">Free Exercise DB</a>.</p>
+      <p class="note" style="margin-top:6px;padding:0">Built on the evidence-based principles coaches like Jeff Nippard teach: roughly 10–20 hard sets per muscle a week, training close to failure, exercises that load the stretched position, and steady overload. An original plan, not a copy of a paid program.</p></div></div>
   </section>`;
 }
 
@@ -691,11 +773,20 @@ function sheet(html) {
   document.getElementById("layer").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div></div>`;
 }
 function closeSheet() { document.getElementById("layer").innerHTML = ""; }
-function swapSheet(s, exId) {
-  const ex = byId(s.day).ex.find(e => e.id === exId), cur = s.ex[exId]?.v || variantOf(ex);
+function swapSheet(s, exId, dayId) {
+  const ex = byId(s ? s.day : dayId).ex.find(e => e.id === exId), cur = s?.ex[exId]?.v || variantOf(ex);
   sheet(`<h3>Swap exercise</h3><p class="note" style="padding:0">Pick what your gym has. The choice sticks for future workouts, and each variation keeps its own history.</p>
-    <div class="opts">${[[ex.name, "Plan"], ...ex.alts].map(([n, eq]) => `<button class="opt" type="button" data-act="pick" data-ex="${exId}" data-name="${esc(n)}" aria-pressed="${n === cur}"><span>${esc(n)}</span><span class="eq">${esc(eq)}</span></button>`).join("")}</div>
+    <div class="opts">${[[ex.name, "Plan"], ...ex.alts].map(([n, eq]) => `<button class="opt" type="button" data-act="pick" data-day="${s ? s.day : dayId}" data-ex="${exId}" data-name="${esc(n)}" aria-pressed="${n === cur}">${IMG[n] ? `<img class="thumb" src="${img(n, 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span style="flex:1;min-width:0">${esc(n)}</span><span class="eq">${esc(eq)}</span></button>`).join("")}</div>
     <button class="cta quiet" type="button" data-act="closesheet">Cancel</button>`);
+}
+
+function demoSheet(name, exId) {
+  const ex = ALL.flatMap(d => d.ex || []).find(e => e.id === exId);
+  sheet(`<h3>${esc(name)}</h3>
+    <div class="frames"><figure><img src="${img(name, 0)}" alt="${esc(name)}, start position"><figcaption>1 · Start</figcaption></figure><figure><img src="${img(name, 1)}" alt="${esc(name)}, end position"><figcaption>2 · Finish</figcaption></figure></div>
+    ${ex ? `<p class="note" style="padding:0;color:var(--ink)">${esc(ex.cue)}</p>` : ""}
+    ${ex && name !== ex.name ? `<p class="note" style="padding:0">Photo shows the closest standard version of this exercise.</p>` : ""}
+    <div class="btnrow"><a class="cta quiet" href="${yt(name)}" target="_blank" rel="noopener" style="font-size:16px">▶ Video</a><button class="cta quiet" type="button" data-act="closesheet" style="font-size:16px">Close</button></div>`);
 }
 
 // ================= Rest timer =================
@@ -737,18 +828,23 @@ document.addEventListener("click", ev => {
   if (b.dataset.tab) return go(b.dataset.tab);
   const a = b.dataset.act, s = open && S.sessions[open];
   switch (a) {
-    case "start": return startSession(b.dataset.day);
+    case "start": return startSession(b.dataset.day, b.dataset.date);
+    case "preview": preview = { day: b.dataset.day, date: todayISO() }; render(); return window.scrollTo(0, 0);
+    case "unpreview": preview = null; render(); return window.scrollTo(0, 0);
+    case "day": return openDay(b.dataset.date, b.dataset.day);
+    case "wk": ev.preventDefault(); weekOff = +b.dataset.d === 0 ? 0 : weekOff + +b.dataset.d; return render();
     case "resume": open = S.active; render(); return window.scrollTo(0, 0);
-    case "open": open = b.dataset.id; render(); return window.scrollTo(0, 0);
-    case "close": stopRest(); open = null; save(true); render(); return window.scrollTo(0, 0);
+    case "open": closeSheet(); open = b.dataset.id; render(); return window.scrollTo(0, 0);
+    case "close": stopRest(); open = null; preview = null; save(true); render(); return window.scrollTo(0, 0);
     case "finish": return finish(s);
     case "closesheet": return closeSheet();
     case "closesheet-home": closeSheet(); open = null; tab = "today"; render(); return window.scrollTo(0, 0);
-    case "swap": return swapSheet(s, b.dataset.ex);
+    case "swap": return swapSheet(s, b.dataset.ex, b.dataset.day);
+    case "demo": return demoSheet(b.dataset.name, b.dataset.ex);
     case "pick": {
-      const ex = byId(s.day).ex.find(e => e.id === b.dataset.ex), n = b.dataset.name;
+      const ex = byId(b.dataset.day).ex.find(e => e.id === b.dataset.ex), n = b.dataset.name;
       if (n === ex.name) delete S.swaps[ex.id]; else S.swaps[ex.id] = n;
-      const e = exEntry(s, ex.id); e.v = n;
+      if (s) exEntry(s, ex.id).v = n;
       save(); closeSheet(); render(); toast("Swapped to " + n); return;
     }
     case "tick": {

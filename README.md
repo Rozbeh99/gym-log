@@ -7,6 +7,10 @@ rest, the program's notes, its substitutes and weak-point picks, with a set-by-s
 timer, last-set RPE, and a strength chart per lift. Workouts go in order onto your lift days,
 so a missed day just moves everything along.
 
+Focus muscles (on by default, Setup > Focus muscles) put chest, lats, biceps and quads first: the
+program's weak-point slots are set to them and Upper 1 and Lower 1 get one extra finisher. The app has
+light and dark themes; Auto follows the phone.
+
 Live at https://rozbeh99.github.io/gym-log/ (open in Safari, then Share > Add to Home Screen).
 
 ## Runna sync

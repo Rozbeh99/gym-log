@@ -1,7 +1,7 @@
 # Gym Log
 
 A personal training app for iPhone that runs Jeff Nippard's Upper/Lower Size & Strength
-program (9 weeks, 6 lift days, or the program's own 5-day version) alongside the runs in your
+program (9 weeks; 4 lift days a week by default, or 3, or the program's own 6 and 5) alongside the runs in your
 Runna plan. Each session shows sets × reps, % of 1RM worked out into kilos or an RPE target,
 rest, the program's notes, its substitutes and weak-point picks, with a set-by-set log, rest
 timer, last-set RPE, and a strength chart per lift. Workouts go in order onto your lift days,

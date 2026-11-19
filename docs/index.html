@@ -171,9 +171,10 @@ button.wd { cursor: pointer; }
 .dateline { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
 .dateline input { background: none; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; padding: 2px 0; }
 
-.ex { padding: 16px 0 14px; display: grid; gap: 6px; border-top: .5px solid var(--line-2); }
+.ex { padding: 14px; display: grid; gap: 6px; background: var(--panel); border-radius: 14px; box-shadow: var(--shadow); }
 .ex > *:not(.exhead) { margin-inline: 0; }
 .ex.complete .exname { color: var(--muted); }
+.ex + .ex, .ex + .panel, .panel + .ex { border-top: 0; }
 .ex.complete .exidx::after { content: " · done"; }
 .exhead { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .exidx { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
@@ -188,17 +189,20 @@ button.wd { cursor: pointer; }
 .swap svg { width: 13px; height: 13px; }
 .prev { font-size: 12px; color: var(--muted); }
 .prev b { color: var(--ink); font-family: var(--mono); font-weight: 600; font-size: 13px; }
-.sets { display: grid; gap: 0; margin-top: 4px; }
-.setrow, .sethead { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 14px; align-items: center; }
-.sethead span { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding-bottom: 2px; }
-.setno { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--faint); }
-.setrow input { width: 100%; min-width: 0; background: none; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; padding: 8px 0 5px; font-family: var(--mono); font-size: 18px; font-weight: 600; text-align: left; font-variant-numeric: tabular-nums; }
+.sets { display: grid; gap: 6px; margin-top: 6px; }
+.setrow, .sethead { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr) 30px; gap: 8px; align-items: center; }
+.sethead span { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.sethead span:last-child { text-align: center; }
+.setno { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--faint); text-align: center; }
+.setrow input { width: 100%; min-width: 0; background: none; border: 0; padding: 0; font-family: var(--mono); font-size: 18px; font-weight: 600; text-align: left; font-variant-numeric: tabular-nums; outline: none; }
 .setrow input::placeholder { color: var(--faint); font-weight: 500; }
-.setrow input:focus { background: none; border-color: var(--accent); outline: none; }
-.setrow.on input { border-color: transparent; }
+.fld { display: flex; align-items: baseline; gap: 4px; background: var(--panel-2); border: 1.5px solid transparent; border-radius: 10px; padding: 7px 10px; cursor: text; }
+.fld::after { content: attr(data-u); font-size: 12px; font-weight: 600; color: var(--muted); flex: none; }
+.fld:focus-within { border-color: var(--accent); background: var(--panel); }
+.setrow.on .fld { background: var(--soft); }
 .setrow.on .setno { color: var(--accent); }
 .tick[aria-pressed="true"] { color: var(--on-accent); }
-.tick { width: 24px; height: 24px; justify-self: end; border-radius: 50%; border: 1.5px solid var(--line-2); background: none; display: grid; place-items: center; color: transparent; padding: 0; }
+.tick { width: 28px; height: 28px; justify-self: center; border-radius: 50%; border: 1.5px solid var(--line-2); background: none; display: grid; place-items: center; color: transparent; padding: 0; }
 .tick svg { width: 13px; height: 13px; }
 .tick[aria-pressed="true"] { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
 .mini { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
@@ -305,7 +309,7 @@ textarea { resize: vertical; min-height: 70px; }
 .bwform span { color: var(--muted); font-size: 13px; }
 .bwform .sbtn { padding: 7px 12px; }
 .lsrpe { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
-.lsrpe input { width: 40px; background: none; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; padding: 2px 0; font-family: var(--mono); font-size: 15px; font-weight: 600; text-align: center; }
+.lsrpe input { width: 46px; background: var(--panel-2); border: 1.5px solid transparent; border-radius: 8px; padding: 4px 6px; font-family: var(--mono); font-size: 15px; font-weight: 600; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 /* Exercise details behind a tap, and the one-line prescription */
 .rx { margin: 0; font-size: 13.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -939,11 +943,11 @@ function exCard(s, pl, ex, i) {
     ${more && !pl.legacy ? `<details class="more"><summary>Notes${tw && !s.end && warmup(ex) ? ", warm-up" : ""} and video</summary>${more}</details>` : ""}
     ${ex.pct && !maxFor(ex.id) && !s.end ? maxField(ex) : ""}
     <div class="sets">
-      <div class="sethead"><span>Set</span><span>${esc(s.unit || S.unit)}</span><span>Reps</span><span></span></div>
+      <div class="sethead"><span>Set</span><span>Weight</span><span>Reps</span><span>Done</span></div>
       ${sets.map((x, k) => { const p = last?.sets?.[k], pw = tw ? fmtW(tw) : p?.w, pr = repTxt || p?.r || ex.reps;
         return `<div class="setrow ${x.done ? "on" : ""}"><span class="setno">${k + 1}</span>
-          <input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} weight">
-          <input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps">
+          <label class="fld" data-u="${esc(s.unit || S.unit)}"><input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} weight"></label>
+          <label class="fld" data-u="reps"><input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps"></label>
           <button class="tick" type="button" data-act="tick" data-ex="${ex.id}" data-k="${k}" aria-pressed="${!!x.done}" aria-label="Set ${k + 1} done">${ICON.tick}</button></div>`; }).join("")}
     </div>
     <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Add set</button>${sets.length > n ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">Remove set</button>` : ""}

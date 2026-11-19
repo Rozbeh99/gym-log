@@ -1,8 +1,11 @@
 # Gym Log
 
-A personal training app for iPhone: four lifting days (Push, Pull, Legs, Upper) and
-two runs a week, with sets × reps targets, swap-in exercises for whatever the gym has,
-a set-by-set log with a rest timer, and a strength chart per lift.
+A personal training app for iPhone that runs Jeff Nippard's Upper/Lower Size & Strength
+program (9 weeks; 4 lift days a week by default, or 3, or the program's own 6 and 5) alongside the runs in your
+Runna plan. Each session shows sets × reps, % of 1RM worked out into kilos or an RPE target,
+rest, the program's notes, its substitutes and weak-point picks, with a set-by-set log, rest
+timer, last-set RPE, and a strength chart per lift. Workouts go in order onto your lift days,
+so a missed day just moves everything along.
 
 Live at https://rozbeh99.github.io/gym-log/ (open in Safari, then Share > Add to Home Screen).
 
@@ -12,7 +15,7 @@ Runs planned in the Runna app can show up on the right days. Runna has no API, b
 Calendar Sync gives a private calendar link. The `Runna sync` GitHub Action
 (`.github/workflows/runna-sync.yml`) fetches that link every three hours with
 `tools/runna_sync.py` and commits the sessions to `docs/runna.json`, which the app reads.
-Once that file has runs, run days come from Runna and the schedule only places the lift days.
+Runs come from that file; lifting follows the program on your lift days.
 
 To turn it on: in Runna open Profile > Settings > Calendar Sync and copy the link, then add it
 in this repo under Settings > Secrets and variables > Actions as a secret named `RUNNA_ICS_URL`.
@@ -31,5 +34,5 @@ The site is served by GitHub Pages from `docs/` on `main`. The log is saved on t
 use Setup > Save backup before switching phones.
 
 Exercise photos come from the public-domain [Free Exercise DB](https://github.com/yuhonas/free-exercise-db)
-(Unlicense), resized to WebP in `docs/img/`. `tools/images.json` maps each exercise name in the plan to its
+(Unlicense), resized to WebP in `docs/img/`. `tools/images.json` maps each exercise name in the program to its
 photo; a few swaps use the closest standard version.

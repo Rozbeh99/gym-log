@@ -1,7 +1,7 @@
 {
  "name": "Gym Log",
  "short_name": "Gym Log",
- "description": "Four lifting days and two runs a week, with swap-in exercises and a set-by-set log.",
+ "description": "Jeff Nippard's Upper/Lower program with your Runna runs and a set-by-set log.",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

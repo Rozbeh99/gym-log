@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Gym Log">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0a09">
-<meta name="description" content="Four lifting days and two runs a week, with swap-in exercises and a set-by-set log.">
+<meta name="description" content="Jeff Nippard's Upper/Lower program with your Runna runs, a set-by-set log and progress charts.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -295,6 +295,10 @@ textarea { resize: vertical; min-height: 70px; }
 .bwform input { min-width: 0; background: rgba(0,0,0,.28); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-family: var(--mono); font-size: 18px; }
 .bwform span { color: var(--muted); font-size: 13px; }
 .bwform .sbtn { padding: 10px 14px; }
+.lsrpe { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.lsrpe input { width: 56px; background: rgba(0,0,0,.28); border: 1px solid var(--line-2); border-radius: 9px; padding: 6px 8px; font-family: var(--mono); font-size: 15px; text-align: center; }
+details.panel.cue summary { font-size: 14px; color: var(--ink); font-weight: 600; }
+details.panel.cue .rows { margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -323,96 +327,84 @@ textarea { resize: vertical; min-height: 70px; }
 <script>
 (() => {
 "use strict";
-// ================= The plan =================
-const E = (id, name, sets, lo, hi, rpe, rest, cue, alts) => ({ id, name, sets, lo, hi, rpe, rest, cue, alts });
-const DAYS = [
-  { id: "push", name: "Push", c: "--red", glow: "rgba(255,90,82,.3)", focus: "Chest · shoulders · triceps", ex: [
-    E("bench", "Barbell Bench Press", 3, 6, 8, "8", 180, "Shoulder blades pinned back, slight arch, bar touches lower chest. Leave 1–2 reps in the tank.",
-      [["Dumbbell Bench Press","Dumbbells"],["Machine Chest Press","Machine"],["Smith Machine Bench","Smith"],["Weighted / Deficit Push-up","Bodyweight"]]),
-    E("ohp", "Seated Dumbbell Shoulder Press", 3, 8, 10, "8", 150, "Elbows slightly in front of the body, lower to about ear height, press without slamming the lockout.",
-      [["Standing Barbell Overhead Press","Barbell"],["Machine Shoulder Press","Machine"],["Landmine Press","Barbell"],["Pike Push-up","Bodyweight"]]),
-    E("incline", "Incline Dumbbell Press", 3, 8, 12, "8–9", 120, "Bench at 30°. Deep stretch at the bottom, two-second lowering.",
-      [["Incline Barbell Press","Barbell"],["Incline Smith Press","Smith"],["Low-to-High Cable Fly","Cable"],["Feet-Elevated Push-up","Bodyweight"]]),
-    E("lateral", "Cable Lateral Raise", 3, 12, 15, "9–10", 75, "Cable behind the body, lead with the elbow, stop at shoulder height. Last set to failure.",
-      [["Dumbbell Lateral Raise","Dumbbells"],["Lean-Away Dumbbell Lateral","Dumbbells"],["Machine Lateral Raise","Machine"],["Band Lateral Raise","Band"]]),
-    E("fly", "Pec Deck Fly", 2, 12, 15, "9–10", 75, "Soft elbows, big stretch, squeeze for a beat in the middle.",
-      [["Cable Crossover Fly","Cable"],["Dumbbell Fly","Dumbbells"],["Band Fly","Band"]]),
-    E("ohext", "Overhead Cable Triceps Extension", 3, 10, 12, "9", 90, "Face away from the cable, elbows pointing up. The long-head stretch is the point.",
-      [["Dumbbell Overhead Extension","Dumbbells"],["EZ-Bar Skull Crusher","Barbell"],["Band Overhead Extension","Band"]]),
-    E("pushdown", "Triceps Pressdown", 2, 12, 15, "9–10", 60, "Elbows glued to your sides, full lockout every rep.",
-      [["Dips","Bodyweight"],["Close-Grip Push-up","Bodyweight"],["Band Pressdown","Band"]]),
-  ]},
-  { id: "pull", name: "Pull", c: "--blue", glow: "rgba(79,141,255,.3)", focus: "Back · rear delts · biceps", ex: [
-    E("pullup", "Pull-up", 3, 6, 10, "8", 150, "Full hang at the bottom, drive the elbows to your ribs. Add weight once you clear 10.",
-      [["Lat Pulldown","Cable"],["Assisted Pull-up","Machine"],["Band-Assisted Pull-up","Band"],["Negative Pull-up (5 s lower)","Bodyweight"]]),
-    E("row", "Chest-Supported Dumbbell Row", 3, 8, 10, "8", 120, "Chest stays on the pad, pull toward the hips, pause at the top.",
-      [["Barbell Row","Barbell"],["Seated Cable Row","Cable"],["T-Bar Row","Barbell"],["Inverted Row","Bodyweight"]]),
-    E("onearm", "Single-Arm Cable Row", 2, 10, 12, "9", 90, "Let the shoulder blade stretch forward, then row back to the hip.",
-      [["One-Arm Dumbbell Row","Dumbbells"],["Machine Row","Machine"],["Single-Arm Lat Pulldown","Cable"],["Band Row","Band"]]),
-    E("facepull", "Face Pull", 3, 12, 15, "9", 60, "Rope to the forehead, thumbs back, finish like a double-biceps pose.",
-      [["Reverse Pec Deck","Machine"],["Bent-Over Rear Delt Fly","Dumbbells"],["Band Pull-Apart","Band"]]),
-    E("curl", "EZ-Bar Curl", 3, 8, 12, "9", 90, "No swinging. Lower for two seconds.",
-      [["Dumbbell Curl","Dumbbells"],["Cable Curl","Cable"],["Band Curl","Band"]]),
-    E("hammer", "Hammer Curl", 2, 10, 12, "9–10", 60, "Neutral grip, curl across the body or straight up.",
-      [["Rope Cable Hammer Curl","Cable"],["Cross-Body Hammer Curl","Dumbbells"],["Band Hammer Curl","Band"]]),
-  ]},
-  { id: "legs", name: "Legs", c: "--yellow", glow: "rgba(255,201,60,.26)", focus: "Quads · hamstrings · glutes · calves", ex: [
-    E("squat", "Back Squat", 3, 6, 8, "7–8", 180, "Brace before you descend, reach at least parallel, knees track over the toes.",
-      [["Hack Squat","Machine"],["Leg Press","Machine"],["Smith Machine Squat","Smith"],["Goblet Squat","Dumbbells"]]),
-    E("rdl", "Romanian Deadlift", 3, 8, 10, "8", 150, "Soft knees, push the hips back until you feel a deep hamstring stretch, flat back.",
-      [["Dumbbell RDL","Dumbbells"],["45° Back Extension","Machine"],["Single-Leg Dumbbell RDL","Dumbbells"],["Good Morning","Barbell"]]),
-    E("split", "Bulgarian Split Squat", 3, 8, 10, "8–9", 90, "Reps are per leg. Lean forward a little for glutes, stay upright for quads.",
-      [["Walking Lunge","Dumbbells"],["Reverse Lunge","Dumbbells"],["Single-Leg Leg Press","Machine"],["Step-up","Dumbbells"]]),
-    E("legcurl", "Seated Leg Curl", 3, 10, 12, "9", 75, "Seated beats lying for growth. Lean forward to stretch the hamstrings more.",
-      [["Lying Leg Curl","Machine"],["Assisted Nordic Curl","Bodyweight"],["Slider / Swiss Ball Curl","Bodyweight"],["Band Leg Curl","Band"]]),
-    E("legext", "Leg Extension", 2, 12, 15, "9–10", 75, "Lean back slightly, pause at the top, slow on the way down.",
-      [["Reverse Nordic","Bodyweight"],["Sissy Squat","Bodyweight"],["Spanish Squat","Band"]]),
-    E("calf", "Standing Calf Raise", 3, 10, 15, "9", 60, "Pause two seconds in the stretched bottom position on every rep.",
-      [["Leg Press Calf Raise","Machine"],["Single-Leg Dumbbell Calf Raise","Dumbbells"],["Smith Machine Calf Raise","Smith"]]),
-    E("abs", "Hanging Leg Raise", 2, 10, 15, "9", 60, "Curl the pelvis up, don't just swing the legs.",
-      [["Cable Crunch","Cable"],["Ab Wheel Rollout","Bodyweight"],["Decline Crunch","Bodyweight"]]),
-  ]},
-  { id: "upper", name: "Upper", c: "--green", glow: "rgba(63,207,122,.26)", focus: "Whole upper body · arms · delts", ex: [
-    E("pulldown", "Neutral-Grip Lat Pulldown", 3, 8, 10, "8", 120, "Lean back slightly, pull the handle to the upper chest.",
-      [["Chin-up","Bodyweight"],["Machine Pulldown","Machine"],["Band-Assisted Chin-up","Band"],["Dumbbell Pullover","Dumbbells"]]),
-    E("dbpress", "Flat Dumbbell Press", 3, 8, 10, "8", 150, "Deep range of motion, wrists stacked over elbows.",
-      [["Machine Chest Press","Machine"],["Barbell Bench Press","Barbell"],["Weighted Dips","Bodyweight"],["Push-up","Bodyweight"]]),
-    E("cablerow", "Seated Cable Row", 3, 10, 12, "8–9", 120, "Wide grip hits more upper back, close grip more lats. Pick one and keep it.",
-      [["Chest-Supported Dumbbell Row","Dumbbells"],["Machine Row","Machine"],["Inverted Row","Bodyweight"],["Band Row","Band"]]),
-    E("lateral2", "Dumbbell Lateral Raise", 3, 12, 20, "9–10", 60, "Light weight, strict form. Finish the last set with partial reps.",
-      [["Cable Lateral Raise","Cable"],["Machine Lateral Raise","Machine"],["Band Lateral Raise","Band"]]),
-    E("rear", "Reverse Pec Deck", 2, 12, 15, "9–10", 60, "Arms wide, think of pushing the handles out, not back.",
-      [["Face Pull","Cable"],["Bent-Over Rear Delt Fly","Dumbbells"],["Band Pull-Apart","Band"]]),
-    E("incurl", "Incline Dumbbell Curl", 2, 10, 12, "9–10", 60, "Arms hang behind you for a long biceps stretch.",
-      [["Bayesian Cable Curl","Cable"],["Preacher Curl","Machine"],["Band Curl","Band"]]),
-    E("skull", "EZ-Bar Skull Crusher", 2, 10, 12, "9–10", 60, "Lower the bar behind your head, not to your nose.",
-      [["Dumbbell French Press","Dumbbells"],["Close-Grip Bench Press","Barbell"],["Diamond Push-up","Bodyweight"]]),
-  ]},
+// ================= The program =================
+// The program comes built in (BUILTIN below). A program file imported in Setup is kept on the phone and replaces it.
+// weeks[w][d] rows: [exercise id, sets, reps, load (% of 1RM, or RPE), rest min s, rest max s, note, superset tag]
+// exercises: id -> [name, photo, swaps, YouTube video id]. weakPoints: { upper|lower: [[body part, [exercise names]]] }
+let PROG = [], EX = {}, WEAK = { upper: [], lower: [] }, WEEKS = 0, PCT_LIFTS = [], PHOTO_BY_NAME = {}, PROG_NAME = "";
+const str = (v, n = 300) => String(v ?? "").slice(0, n);
+// Checks an imported program file and keeps only what the app uses. Returns null if it isn't one.
+function cleanProgram(p) {
+  if (!p || p.format !== "gymlog-program" || !Array.isArray(p.weeks) || !p.weeks.length || typeof p.exercises !== "object") return null;
+  const ex = {};
+  for (const [id, m] of Object.entries(p.exercises)) {
+    if (!/^[a-z0-9]{1,24}$/.test(id) || !Array.isArray(m)) continue;
+    ex[id] = [str(m[0], 80), /^[\w.-]{1,80}$/.test(m[1] || "") ? m[1] : "", (Array.isArray(m[2]) ? m[2] : []).slice(0, 8).map(x => str(x, 80)), /^[\w-]{6,20}$/.test(m[3] || "") ? m[3] : ""];
+  }
+  const row = r => Array.isArray(r) && ex[r[0]] ? [r[0], /^\d(-\d)?$/.test(r[1]) ? r[1] : "1", str(r[2], 12), /^(\d{1,2}(\.\d)?%|\d{1,2})$/.test(r[3]) ? r[3] : "", Math.max(0, Math.min(600, +r[4] || 0)), Math.max(0, Math.min(600, +r[5] || 0)), str(r[6]), /^[A-Z]\d$/.test(r[7] || "") ? r[7] : undefined].filter((x, i) => i < 7 || x) : null;
+  const weeks = p.weeks.slice(0, 20).map(w => Array.isArray(w) && w.length === 6 ? w.map(d => (Array.isArray(d) ? d : []).map(row).filter(Boolean)) : null);
+  if (weeks.some(w => !w || w.some(d => !d.length))) return null;
+  const weak = {};
+  for (const k of ["upper", "lower"]) weak[k] = (p.weakPoints?.[k] || []).filter(Array.isArray).slice(0, 12).map(([part, list]) => [str(part, 30), (Array.isArray(list) ? list : []).slice(0, 8).map(x => str(x, 80))]);
+  return { format: "gymlog-program", version: 1, name: str(p.name, 80), weeks, exercises: ex, weakPoints: weak };
+}
+function useProgram(p) {
+  PROG = p?.weeks || []; EX = p?.exercises || {}; WEAK = p?.weakPoints || { upper: [], lower: [] }; WEEKS = PROG.length; PROG_NAME = p?.name || "";
+  PCT_LIFTS = [...new Set(PROG.flat(2).filter(r => /%$/.test(r[3])).map(r => r[0]))];
+  PHOTO_BY_NAME = { ...Object.fromEntries(Object.values(EX).filter(m => m[1]).map(m => [m[0], m[1]])), ...PHOTO };
+}
+const hasProg = () => WEEKS > 0;
+const importCard = () => `<div class="hero" style="--c:var(--amber);--glow:rgba(255,178,56,.3)"><div><div class="when">One-time setup</div><h2>Add your program</h2>
+  <p class="sub">Gym Log runs Jeff Nippard's Upper/Lower program, but the program itself isn't on this public site. Import your copy (upper-lower-program.json) from the Files app once. It stays on this phone and goes into your backups.</p></div>
+  <label class="cta" style="cursor:pointer">Import program file<input type="file" accept="application/json,.json" id="prog-import" hidden></label></div>`;
+const PHOTO = {"Hack Squat": "Hack_Squat", "Smith Machine Squat": "Smith_Machine_Squat", "Leg Press + 15 Back Extensions": "Leg_Press", "Barbell RDL": "Romanian_Deadlift", "Goblet Squat": "Goblet_Squat", "Walking Lunge": "Dumbbell_Lunges", "Reverse Hyper": "Reverse_Hyperextension", "Glute-Ham Raise": "Glute_Ham_Raise", "Seated Calf Raise": "Seated_Calf_Raise", "Leg Press Calf Press": "Calf_Press_On_The_Leg_Press_Machine", "Bodyweight Crunch": "Crunches", "Sumo Deadlift": "Sumo_Deadlift", "Glute Bridge": "Barbell_Glute_Bridge", "DB 45° Hyperextension": "Hyperextensions_Back_Extensions", "Seated Leg Curl": "Seated_Leg_Curl", "Sliding Leg Curl": "Ball_Leg_Curl", "Leg Extension": "Leg_Extensions", "Dumbbell Step-up": "Dumbbell_Step_Ups", "Bulgarian Split Squat": "Split_Squat_with_Dumbbells", "Lying Leg Curl": "Lying_Leg_Curls", "Glute Kickback": "Glute_Kickback", "Cable Crunch": "Cable_Crunch", "Sissy Squat": "Weighted_Sissy_Squat", "Standing Calf Raise": "Standing_Calf_Raises", "Reverse Crunch": "Reverse_Crunch", "Dumbbell Walking Lunge": "Dumbbell_Lunges", "Leg Press": "Leg_Press", "Single-Leg Leg Press": "Leg_Press", "Cable Pull-Through": "Pull_Through", "Machine Hip Abduction": "Thigh_Abductor", "Pallof Press": "Pallof_Press", "Dumbbell Press": "Dumbbell_Bench_Press", "Machine Chest Press": "Leverage_Chest_Press", "Smith Machine Bench Press": "Smith_Machine_Bench_Press", "Pull-up": "Pullups", "Supinated Pulldown": "Underhand_Cable_Pulldowns", "Pause Barbell Incline Press": "Barbell_Incline_Bench_Press_-_Medium_Grip", "Deficit Push-up": "Pushups", "Seated Cable Row": "Seated_Cable_Rows", "Machine T-Bar Row": "T-Bar_Row_with_Handle", "Seated Dumbbell Shoulder Press": "Seated_Dumbbell_Press", "Cable Lateral Raise": "Cable_Seated_Lateral_Raise", "Dumbbell Lateral Raise": "Side_Lateral_Raise", "Seated Barbell Overhead Press": "Seated_Barbell_Military_Press", "Lat Pulldown": "Wide-Grip_Lat_Pulldown", "Neutral-Grip Pull-up": "V-Bar_Pullup", "Floor Press": "Floor_Press", "Dumbbell Close-Grip Bench Press": "Close-Grip_Dumbbell_Press", "Cable Wide-Grip Row": "Seated_Cable_Rows", "Dumbbell Row": "One-Arm_Dumbbell_Row", "Cable Fly": "Cable_Crossover", "Dumbbell Fly": "Dumbbell_Flyes", "Pec Deck": "Butterfly", "Machine Chest-Supported Row": "Leverage_Iso_Row", "Dumbbell Chest-Supported Row": "Dumbbell_Incline_Row", "Concentration Curl": "Concentration_Curls", "Preacher Curl": "Machine_Preacher_Curls", "Dumbbell Incline Press": "Incline_Dumbbell_Press", "Machine Incline Press": "Leverage_Incline_Chest_Press", "Neutral-Grip Pulldown": "V-Bar_Pulldown", "Chin-up": "Chin-Up", "Assisted Dip": "Dip_Machine", "Machine Dip": "Dip_Machine", "Close-Grip Bench Press": "Close-Grip_Barbell_Bench_Press", "Chest-Supported Row": "Dumbbell_Incline_Row", "Cable Single-Arm Row": "Seated_One-arm_Cable_Pulley_Rows", "EZ-Bar Skull Crusher": "EZ-Bar_Skullcrusher", "JM Press": "JM_Press", "Pin Press": "Pin_Presses", "Push-up": "Pushups", "Machine Lateral Raise": "Cable_Seated_Lateral_Raise", "EZ-Bar Curl": "EZ-Bar_Curl", "Dumbbell Curl 21s": "Dumbbell_Bicep_Curl", "Cable Curl 21s": "Standing_Biceps_Cable_Curl", "Barbell Overhead Press": "Standing_Military_Press", "Machine Shoulder Press": "Machine_Shoulder_Military_Press", "V-Bar Pressdown": "Triceps_Pushdown_-_V-Bar_Attachment", "Dumbbell Kickback": "Tricep_Dumbbell_Kickback", "Pronated Lat Pulldown": "Wide-Grip_Lat_Pulldown", "Dumbbell Floor Press": "Dumbbell_Floor_Press", "Face Pull": "Face_Pull", "Reverse Pec Deck": "Reverse_Machine_Flyes", "Pronated EZ-Bar Curl": "Reverse_Barbell_Curl", "Rope Hammer Curl": "Cable_Hammer_Curls_-_Rope_Attachment", "Rope Triceps Extension": "Triceps_Pushdown_-_Rope_Attachment", "Cable Fly Dropset": "Cable_Crossover", "Cable Fly 21s": "Cable_Crossover", "Pronated / Supinated Pulldown (8/8)": "Wide-Grip_Lat_Pulldown", "Cable Pullover Dropset": "Rope_Straight-Arm_Pulldown", "Elbows Out / Elbows In Row (8/8)": "Seated_Cable_Rows", "Eccentric-Overloaded Dumbbell Curl": "Dumbbell_Bicep_Curl", "Pronated / Supinated EZ-Bar Curl (8/8)": "EZ-Bar_Curl", "Asymmetrical DB Curl": "Dumbbell_Bicep_Curl", "Cable Kickback 21s": "Tricep_Dumbbell_Kickback", "California Press": "Close-Grip_EZ-Bar_Press", "Forced Negative Skull Crusher": "EZ-Bar_Skullcrusher", "Cable Lateral Raise 21s": "Cable_Seated_Lateral_Raise", "Shrug / Lateral Raise Superset": "Dumbbell_Shrug", "Front / Lateral / Bent Rear Delt Raise Tri-set": "Side_Laterals_to_Front_Raise", "Barbell Shrug": "Barbell_Shrug", "Ts / Ys / Is": "Lying_Rear_Delt_Raise", "Face Pull / Elbows Out Row": "Face_Pull", "Hammer Curl": "Hammer_Curls", "Dumbbell Wrist Curl": "Seated_Dumbbell_Palms-Up_Wrist_Curl", "Farmer Carry": "Farmers_Walk", "Plate Neck Flexion": "Lying_Face_Up_Plate_Neck_Resistance", "Plate Lateral Flexion": "Isometric_Neck_Exercise_-_Sides", "Unilateral Leg Press": "Leg_Press", "Constant-Tension Goblet Squat": "Goblet_Squat", "Swiss Ball Leg Curl": "Ball_Leg_Curl", "Enhanced-Eccentric Seated Leg Curl": "Seated_Leg_Curl", "Banded Hip Thrust": "Barbell_Hip_Thrust", "Constant-Tension Hip Thrust": "Barbell_Hip_Thrust", "Machine Hip Abduction Dropset": "Thigh_Abductor", "Hanging Leg Raise": "Hanging_Leg_Raise", "V Sit-up": "Jackknife_Sit-Up", "Glute-Ham Raise ": "Glute_Ham_Raise"};
+
+// Six training days in program order. A week is all six (or five, see SPLITS) in sequence.
+const DAYDEF = [
+  { id: "l1", d: 1, name: "Lower 1", c: "--yellow", glow: "rgba(255,201,60,.26)", focus: "Squat · hinge · quads · calves · abs" },
+  { id: "u1", d: 2, name: "Upper 1", c: "--red", glow: "rgba(255,90,82,.3)", focus: "Bench press · lats · rows · delts" },
+  { id: "l2", d: 3, name: "Lower 2", c: "--green", glow: "rgba(63,207,122,.26)", focus: "Deadlift · front squat · glutes · hamstrings" },
+  { id: "u2", d: 4, name: "Upper 2", c: "--blue", glow: "rgba(79,141,255,.3)", focus: "Overhead press · pull-ups · chest · arms" },
+  { id: "l3", d: 5, name: "Lower 3", c: "--orange", glow: "rgba(255,106,43,.3)", focus: "Squat volume · lunges · glutes · abs" },
+  { id: "u3", d: 6, name: "Upper 3", c: "--amber", glow: "rgba(255,178,56,.3)", focus: "Incline press · pull-ups · back · triceps" },
 ];
-const RUNS = [
-  { id: "easy", name: "Easy Run", c: "--steel", glow: "rgba(154,167,180,.22)", focus: "Zone 2 · aerobic base", run: true,
-    opts: [["Easy 30–45 min", "Conversational pace, RPE 3–4. Full sentences should be easy."],
-           ["Long easy 50–70 min", "Same easy effort, just longer. Once 30–45 min feels routine."],
-           ["Run / walk 30 min", "4 min jog, 1 min walk. For a heavy-legs week."]] },
-  { id: "quality", name: "Quality Run", c: "--steel", glow: "rgba(154,167,180,.22)", focus: "One harder session a week", run: true,
-    opts: [["Intervals 6 × 400 m", "10 min easy, 6 × 400 m hard (RPE 8) with 90 s jog between, 10 min easy."],
-           ["Tempo 20 min", "10 min easy, 20 min comfortably hard (RPE 6–7), 10 min easy."],
-           ["Hills 8 × 30 s", "10 min easy, 8 × 30 s hard uphill, walk down, 10 min easy."]] },
-];
-const ALL = [...DAYS, ...RUNS];
+// 6 days as written. 5 days is the program's own fallback: drop Lower 3 and run Day 2, 1, 4, 3, 6.
+const SPLITS = { 6: [1, 2, 3, 4, 5, 6], 5: [2, 1, 4, 3, 6] };
+// The old Push/Pull/Legs/Upper plan, kept only so past sessions still show with their names and colours.
+const LEGACY = {
+  push: { name: "Push", c: "--red", glow: "rgba(255,90,82,.3)" }, pull: { name: "Pull", c: "--blue", glow: "rgba(79,141,255,.3)" },
+  legs: { name: "Legs", c: "--yellow", glow: "rgba(255,201,60,.26)" }, upper: { name: "Upper", c: "--green", glow: "rgba(63,207,122,.26)" },
+  easy: { name: "Easy Run", c: "--steel", run: true }, quality: { name: "Quality Run", c: "--steel", run: true },
+};
 // Runs from the Runna calendar, copied into runna.json by .github/workflows/runna-sync.yml
-const RUNNA_DAY = { id: "runna", name: "Runna Run", c: "--steel", glow: "rgba(154,167,180,.22)", focus: "From your Runna plan", run: true, opts: [] };
-// Photos: Free Exercise DB (public domain, github.com/yuhonas/free-exercise-db). Some swaps borrow the closest match.
-const IMG = {"45° Back Extension":"Hyperextensions_Back_Extensions","Ab Wheel Rollout":"Barbell_Ab_Rollout_-_On_Knees","Assisted Nordic Curl":"Natural_Glute_Ham_Raise","Assisted Pull-up":"Band_Assisted_Pull-Up","Back Squat":"Barbell_Full_Squat","Band Curl":"Close-Grip_EZ-Bar_Curl_with_Band","Band Fly":"Cross_Over_-_With_Bands","Band Hammer Curl":"Hammer_Curls","Band Lateral Raise":"Lateral_Raise_-_With_Bands","Band Leg Curl":"Seated_Band_Hamstring_Curl","Band Overhead Extension":"Speed_Band_Overhead_Triceps","Band Pressdown":"Triceps_Pushdown_-_Rope_Attachment","Band Pull-Apart":"Band_Pull_Apart","Band Row":"Seated_Cable_Rows","Band-Assisted Chin-up":"Band_Assisted_Pull-Up","Band-Assisted Pull-up":"Band_Assisted_Pull-Up","Barbell Bench Press":"Barbell_Bench_Press_-_Medium_Grip","Barbell Row":"Bent_Over_Barbell_Row","Bayesian Cable Curl":"Standing_One-Arm_Cable_Curl","Bent-Over Rear Delt Fly":"Seated_Bent-Over_Rear_Delt_Raise","Bulgarian Split Squat":"Split_Squat_with_Dumbbells","Cable Crossover Fly":"Cable_Crossover","Cable Crunch":"Cable_Crunch","Cable Curl":"Standing_Biceps_Cable_Curl","Cable Lateral Raise":"Cable_Seated_Lateral_Raise","Chest-Supported Dumbbell Row":"Dumbbell_Incline_Row","Chin-up":"Chin-Up","Close-Grip Bench Press":"Close-Grip_Barbell_Bench_Press","Close-Grip Push-up":"Push-Ups_-_Close_Triceps_Position","Cross-Body Hammer Curl":"Cross_Body_Hammer_Curl","Decline Crunch":"Decline_Crunch","Diamond Push-up":"Push-Ups_-_Close_Triceps_Position","Dips":"Dips_-_Triceps_Version","Dumbbell Bench Press":"Dumbbell_Bench_Press","Dumbbell Curl":"Dumbbell_Bicep_Curl","Dumbbell Fly":"Dumbbell_Flyes","Dumbbell French Press":"Standing_Dumbbell_Triceps_Extension","Dumbbell Lateral Raise":"Side_Lateral_Raise","Dumbbell Overhead Extension":"Standing_Dumbbell_Triceps_Extension","Dumbbell Pullover":"Straight-Arm_Dumbbell_Pullover","Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","EZ-Bar Curl":"EZ-Bar_Curl","EZ-Bar Skull Crusher":"EZ-Bar_Skullcrusher","Face Pull":"Face_Pull","Feet-Elevated Push-up":"Push-Ups_With_Feet_Elevated","Flat Dumbbell Press":"Dumbbell_Bench_Press","Goblet Squat":"Goblet_Squat","Good Morning":"Good_Morning","Hack Squat":"Hack_Squat","Hammer Curl":"Hammer_Curls","Hanging Leg Raise":"Hanging_Leg_Raise","Incline Barbell Press":"Barbell_Incline_Bench_Press_-_Medium_Grip","Incline Dumbbell Curl":"Incline_Dumbbell_Curl","Incline Dumbbell Press":"Incline_Dumbbell_Press","Incline Smith Press":"Smith_Machine_Incline_Bench_Press","Inverted Row":"Inverted_Row","Lat Pulldown":"Wide-Grip_Lat_Pulldown","Lean-Away Dumbbell Lateral":"One-Arm_Side_Laterals","Leg Extension":"Leg_Extensions","Leg Press":"Leg_Press","Leg Press Calf Raise":"Calf_Press_On_The_Leg_Press_Machine","Low-to-High Cable Fly":"Low_Cable_Crossover","Lying Leg Curl":"Lying_Leg_Curls","Machine Chest Press":"Leverage_Chest_Press","Machine Lateral Raise":"Cable_Seated_Lateral_Raise","Machine Pulldown":"Close-Grip_Front_Lat_Pulldown","Machine Row":"Leverage_Iso_Row","Machine Shoulder Press":"Machine_Shoulder_Military_Press","Negative Pull-up (5 s lower)":"Pullups","Neutral-Grip Lat Pulldown":"V-Bar_Pulldown","One-Arm Dumbbell Row":"One-Arm_Dumbbell_Row","Overhead Cable Triceps Extension":"Cable_Rope_Overhead_Triceps_Extension","Pec Deck Fly":"Butterfly","Preacher Curl":"Machine_Preacher_Curls","Pull-up":"Pullups","Push-up":"Pushups","Reverse Lunge":"Dumbbell_Rear_Lunge","Reverse Pec Deck":"Reverse_Machine_Flyes","Romanian Deadlift":"Romanian_Deadlift","Rope Cable Hammer Curl":"Cable_Hammer_Curls_-_Rope_Attachment","Seated Cable Row":"Seated_Cable_Rows","Seated Dumbbell Shoulder Press":"Seated_Dumbbell_Press","Seated Leg Curl":"Seated_Leg_Curl","Single-Arm Cable Row":"Seated_One-arm_Cable_Pulley_Rows","Single-Arm Lat Pulldown":"One_Arm_Lat_Pulldown","Single-Leg Dumbbell RDL":"Stiff-Legged_Dumbbell_Deadlift","Single-Leg Dumbbell Calf Raise":"Standing_Dumbbell_Calf_Raise","Single-Leg Leg Press":"Leg_Press","Sissy Squat":"Weighted_Sissy_Squat","Slider / Swiss Ball Curl":"Ball_Leg_Curl","Smith Machine Bench":"Smith_Machine_Bench_Press","Smith Machine Calf Raise":"Smith_Machine_Calf_Raise","Smith Machine Squat":"Smith_Machine_Squat","Standing Barbell Overhead Press":"Standing_Military_Press","Standing Calf Raise":"Standing_Calf_Raises","Step-up":"Dumbbell_Step_Ups","T-Bar Row":"T-Bar_Row_with_Handle","Triceps Pressdown":"Triceps_Pushdown","Walking Lunge":"Dumbbell_Lunges","Weighted / Deficit Push-up":"Pushups","Weighted Dips":"Dips_-_Chest_Version"};
-const img = (name, k) => IMG[name] ? `img/${IMG[name]}-${k}.webp` : "";
-const yt = name => "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise form");
-const byId = id => ALL.find(d => d.id === id) || (id === "runna" ? RUNNA_DAY : undefined);
+const RUNNA_DAY = { id: "runna", name: "Runna Run", c: "--steel", glow: "rgba(154,167,180,.22)", focus: "From your Runna plan", run: true };
+const byId = id => DAYDEF.find(d => d.id === id) || (id === "runna" ? RUNNA_DAY : LEGACY[id] ? { id, legacy: true, ...LEGACY[id] } : { id, name: String(id || "Session"), c: "--steel", legacy: true });
+const dnum = id => DAYDEF.find(d => d.id === id)?.d || 0;
+const dayOf = d => DAYDEF[d - 1];
 const WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const DEFAULT_SCHEDULE = ["push", "easy", "pull", "legs", "", "upper", "quality"];
-const RUN5K = "https://rozbeh99.github.io/run5k/";
+// Lifts that the program loads as a % of your one-rep max. Deficit deadlifts use your deadlift max unless you set one.
+const MAXOF = { deficitdl: "deadlift" };
+const WAVE = w => Math.ceil(w / 3);
+const waveNote = w => w % 3 === 1 ? "Mini-deload week: lighter effort, lock in technique." : w % 3 === 2 ? "Effort climbs this week." : "Hardest week of the wave. Push it.";
+
+// One exercise in a session, normalised: program row or a past session's entry.
+function exOf(row) {
+  const [id, sets, reps, load, r0, r1, note, ss] = row, m = EX[id] || [id, "", [], ""];
+  return { id, name: m[0], sets: parseInt(sets, 10) || 1, setsTxt: sets, reps, load, pct: /%$/.test(load) ? parseFloat(load) / 100 : 0, rest: [r0, r1], note, ss, swaps: m[2], video: m[3], wp: id === "upperwp" ? "upper" : id === "lowerwp" ? "lower" : "" };
+}
+// The plan behind a session: its program day for that week, or for an old session whatever was logged.
+function planFor(s) {
+  const d = byId(s.day);
+  if (s.wk && d.d && PROG[s.wk - 1]) return { d, wk: s.wk, ex: PROG[s.wk - 1][d.d - 1].map(exOf) };
+  return { d, legacy: true, ex: Object.entries(s.ex || {}).map(([id, e]) => ({ id, name: e.v, sets: e.sets.length || 1, setsTxt: String(e.sets.length), reps: "", load: "", pct: 0, rest: [90, 90], note: "", swaps: [], video: "", wp: "" })) };
+}
+const dayPlanEx = (wk, d) => PROG[wk - 1][d - 1].map(exOf);
+
+const img = (name, k) => PHOTO_BY_NAME[name] ? `img/${PHOTO_BY_NAME[name]}-${k}.webp` : "";
+const videoFor = (ex, v) => v === ex.name && ex.video ? "https://www.youtube.com/watch?v=" + ex.video : "https://www.youtube.com/results?search_query=" + encodeURIComponent(v + " exercise form");
 
 // ================= Runna =================
-let RUNNA = null; // { changed, byDate: { "2026-10-29": [{ title, desc }] } } once runna.json loads
+let RUNNA = null; // { changed, byDate: { "2026-10-29": [{ title, desc }] }, all } once runna.json loads
 // S.runnaMoves maps a Runna session id to the day you'd rather do it. A move lapses on its own once
 // Runna drops that session from the feed (finished, or moved in Runna itself).
 function runnaOn(dISO) {
@@ -421,74 +413,6 @@ function runnaOn(dISO) {
   const here = (RUNNA.byDate[dISO] || []).filter(r => !mv[r.id] || mv[r.id] === dISO);
   for (const [id, to] of Object.entries(mv)) { const r = RUNNA.all[id]; if (to === dISO && r && r.date !== dISO) here.push(r); }
   return here;
-}
-// With Runna synced, run days come from Runna and the schedule only places the lifts.
-function basePlan(dISO) {
-  let id = S.moves && dISO in S.moves ? S.moves[dISO] : S.schedule[dowIdx(new Date(dISO + "T12:00:00"))];
-  if (RUNNA && byId(id)?.run) id = "";
-  const runs = runnaOn(dISO);
-  return { id: id || (runs.length ? "runna" : ""), runs, both: !!(id && runs.length) };
-}
-// The calendar with missed lifts carried over (see rollWalk).
-function dayPlan(dISO) {
-  const p = basePlan(dISO), r = rolled(dISO);
-  if (!r) return p;
-  const lift = r.id, run = p.id && byId(p.id).run;
-  return { id: lift || (run ? p.id : ""), runs: p.runs, both: !!(lift && p.runs.length), from: r.from, behind: r.behind };
-}
-
-// ================= Carry-over =================
-// Lifts form a queue in plan order. Each day the calendar's lift joins the back of the queue, and the
-// front of the queue is due on any day without a run (rest days included, since a missed day was rest).
-// Logging a lift takes it off the queue; leaving it unlogged keeps it due the next day, so everything
-// after it shifts along. Runs keep their own dates. Days emptied by a move (legs or a Runna swap) stay empty.
-// S.roll = { since, skip: { date: liftId }, off }. Days before `since` follow the plain calendar.
-let ROLL = null;
-const isLift = id => !!id && id !== "runna" && !!byId(id) && !byId(id).run;
-function rolled(dISO) {
-  const R = S.roll;
-  if (!R || R.off || !R.since || dISO < R.since) return null;
-  if (!ROLL || ROLL.today !== todayISO()) ROLL = { today: todayISO(), next: R.since, q: [], credit: {}, days: {}, logs: null };
-  if (dISO > addDays(ROLL.today, 400)) return null;
-  while (ROLL.next <= dISO) rollStep(ROLL, R);
-  return ROLL.days[dISO];
-}
-function rollStep(W, R) {
-  const d = W.next, today = W.today;
-  if (!W.logs) {
-    W.logs = {};
-    for (const s of Object.values(S.sessions)) if (isLift(s.day) && s.date >= R.since && isLogged(s)) (W.logs[s.date] ||= []).push(s.day);
-  }
-  const p = basePlan(d), L = isLift(p.id) ? p.id : "";
-  const run = p.runs.length > 0 || (!!p.id && !!byId(p.id)?.run);
-  if (L) {
-    const c = W.credit[L];
-    if (c && daysBetween(c, d) <= 6) delete W.credit[L];
-    else {
-      W.q.push({ id: L, from: d });
-      // Never more than a week behind: past that, the oldest owed lift drops off the front.
-      const perWeek = Math.max(1, S.schedule.filter(isLift).length);
-      while (W.q.length > perWeek) W.q.shift();
-    }
-  }
-  const slot = !!L || (!run && !(S.moves && S.moves[d] === ""));
-  const take = id => { const i = W.q.findIndex(x => x.id === id); if (i < 0) return false; W.q.splice(i, 1); return true; };
-  const skipped = R.skip?.[d] && d <= today ? take(R.skip[d]) : false;
-  const head = slot && !(skipped && d < today) ? W.q[0] : null;
-  W.days[d] = { id: head ? head.id : "", from: head && head.from !== d ? head.from : "", behind: W.q.length - (head ? 1 : 0) };
-  if (d <= today) for (const id of W.logs[d] || []) if (!take(id)) W.credit[id] = d;
-  // From today on, assume each due lift gets done on its day.
-  if (d >= today && head && W.q[0] === head) W.q.shift();
-  W.next = addDays(d, 1);
-}
-function skipLift(id) {
-  const R = S.roll; if (!R) return;
-  (R.skip ||= {})[todayISO()] = id;
-  save(); toast(`${byId(id).name} skipped. The plan carries on from the next one.`); render();
-}
-function resetRoll() {
-  S.roll = { ...S.roll, since: todayISO(), skip: {} };
-  save(); toast("Back to your calendar"); render();
 }
 function loadRunna() {
   fetch("runna.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(j => {
@@ -501,8 +425,6 @@ function loadRunna() {
     }
     RUNNA = { changed: j.changed, byDate, all, count: j.runs.length };
     importRunna();
-    for (const id of Object.keys(S.runnaMoves || {})) swapLiftFor(id);
-    save(true);
     if (!open && !preview && !document.getElementById("layer").innerHTML) render();
   }).catch(() => {});
 }
@@ -520,53 +442,44 @@ function importRunna() {
   }
   save(true);
 }
-// A Runna run moved onto a lift day takes that day; the lift goes to the next day with no lift or run.
-const liftOn = dISO => { const id = S.moves && dISO in S.moves ? S.moves[dISO] : S.schedule[dowIdx(new Date(dISO + "T12:00:00"))]; return id && !byId(id)?.run ? id : ""; };
-function swapLiftFor(runId) {
-  const to = S.runnaMoves?.[runId], sw = S.runnaSwaps || (S.runnaSwaps = {});
-  if (!to || sw[runId]) return;
-  const lift = liftOn(to);
-  if (!lift || sessionsOn(to).some(s => s.day === lift)) return;
-  let dest = "";
-  for (let k = 1; k <= 7 && !dest; k++) { const d = iso(new Date(new Date(to + "T12:00:00").getTime() + k * 864e5)); if (!liftOn(d) && !runnaOn(d).length) dest = d; }
-  if (!dest) return;
-  sw[runId] = { to, dest, lift, was: [to in S.moves ? S.moves[to] : null, dest in S.moves ? S.moves[dest] : null] };
-  S.moves[to] = ""; S.moves[dest] = lift;
-}
-function unswapLiftFor(runId) {
-  const sw = S.runnaSwaps?.[runId]; if (!sw) return;
-  [[sw.to, sw.was[0]], [sw.dest, sw.was[1]]].forEach(([d, v]) => v === null ? delete S.moves[d] : S.moves[d] = v);
-  delete S.runnaSwaps[runId];
-}
 function runnaMoveBtn(r, shownOn) {
   if (r.done || !r.id) return "";
   if (r.date !== shownOn) return `<button class="cta quiet" type="button" data-act="runnamove" data-id="${esc(r.id)}" data-to="">Move back to ${fmtDate(r.date)}</button>`;
   return r.date > todayISO() ? `<button class="cta" type="button" data-act="runnamove" data-id="${esc(r.id)}" data-to="${todayISO()}">Do it today instead</button>` : "";
 }
 const runnaLink = u => u ? `<a class="cta quiet" href="${esc(u)}" target="_blank" rel="noopener">Open in Runna</a>` : "";
-const runnaRows = (dISO, act = "preview") => runnaOn(dISO).map(r =>
-  `<button class="row" type="button" data-act="${act}" data-day="runna" data-date="${dISO}" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">${esc(r.title)}</span><span class="t2">${esc(r.desc.split("\n").find(Boolean) || "From your Runna plan")}</span></span><span class="end">runna</span><span class="chev">›</span></button>`).join("");
+const runnaRows = dISO => runnaOn(dISO).map(r =>
+  `<button class="row" type="button" data-act="preview" data-day="runna" data-date="${dISO}" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">${esc(r.title)}</span><span class="t2">${esc(r.desc.split("\n").find(Boolean) || "From your Runna plan")}</span></span><span class="end">runna</span><span class="chev">›</span></button>`).join("");
 
 // ================= State (saved on this phone) =================
 const KEY = "gymlog-state";
+const DEFAULT_PROG = () => ({ split: 6, days: [1, 1, 1, 1, 1, 1, 0], cursor: null });
+const fresh = () => ({ unit: "kg", swaps: {}, sessions: {}, active: null, maxes: {}, prog: DEFAULT_PROG() });
+// Jeff Nippard's Upper/Lower Size & Strength program, transcribed from the PDF. A program file imported in Setup replaces it.
+const BUILTIN = {"format":"gymlog-program","version":1,"name":"Jeff Nippard's Upper/Lower Size & Strength","note":"Personal copy for Gym Log. Import it in Setup. Rows: [exercise id, sets, reps, load (% of 1RM or RPE), rest min s, rest max s, note, superset tag].","weeks":[[[["squat","3","4","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["sldl","3","10","7",120,180,"4-second lowering phase. Keep your hips high"],["ctlegpress","2","20","8",120,180,"Don't stop in between reps"],["goodmorning","3","8","7",60,120,"Keep your spine neutral"],["eccalf","4","6/6","8",60,120,"First 6 reps 3-second lowering phase, last 6 reps don't stop between reps"],["cablecrunch","3","30","8",60,120,"Round your back as you crunch"]],[["bench","3","6","70%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","8",120,180,"Pull your elbows down and in"],["pauseincline","3","8","7",120,180,"3-second pause"],["pendlay","3","10/10","8",120,180,"10 reps pendlay row, 10 reps bent over row"],["ctmspress","2","12","8",60,120,"Don't stop in between reps"],["mlateral","3","12/12","9",60,120,"Dropset"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","2","5","80%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","8","65%",180,240,"Keep your torso upright"],["hipthrust","3","12","8",120,180,"Fully extend your hips"],["ctlyingcurl","3","20","8",60,120,"Flex your hamstrings"],["eolegext","3","12","8",60,120,"12 reps each leg. Bilateral concentric, unilateral eccentric"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","2","4","75%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","3","6","7",120,180,"Pull your chest to the bar"],["cgbp","3","10","60%",120,180,"Shoulder width grip"],["cablerow","3","15","8",120,180,"Pull via shoulder extension"],["fly21","3","7/7/7","8",60,120,"7 reps top half of ROM, 7 reps bottom half of ROM, 7 reps full ROM"],["csrowband","2","20","8",60,120,"Focus on protraction/retraction"],["dbcurl","3","15","8",60,120,"Supinate against the dumbbell"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","70%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","8",60,120,"Squeeze your glutes"],["wcrunch","3","10","7",60,120,"Round your back as you crunch"]],[["incline","3","8","65%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","8",120,180,"Rpe8 AMRAP, then do 2 forced negatives"],["dip","3","10","8",120,180,"Keep your scapulae retracted and depressed"],["tbar","3","12","8",120,180,"Pull via shoulder adduction"],["ohp","3","12","8",60,120,"Squeeze your glutes to keep your torso upright"],["skull","3","12","9",60,120,"8 reps, rest 5 seconds, 2 reps, rest 5 seconds, 2 reps"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","5","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["sldl","3","10","8",120,180,"4-second lowering phase. Keep your hips high"],["ctlegpress","2","20","8",120,180,"Don't stop in between reps"],["goodmorning","3","8","8",60,120,"Keep your spine neutral"],["eccalf","4","6","9",60,120,"Press onto your toes"],["cablecrunch","3","30","8",60,120,"Round your back as you crunch"]],[["bench","3","7","70%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","8",120,180,"Pull your elbows down and in"],["pauseincline","3","8","8",120,180,"3-second pause"],["pendlay","3","10/10","9",120,180,"10 reps pendlay row, 10 reps bent over row"],["ctmspress","2","12","9",60,120,"Don't stop in between reps"],["mlateral","3","12/12","9",60,120,"Dropset"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","3","5","80%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","9","65%",180,240,"Keep your torso upright"],["hipthrust","3","12","8",120,180,"Fully extend your hips"],["ctlyingcurl","3","20","8",60,120,"Flex your hamstrings"],["eolegext","3","12","8",60,120,"12 reps each leg. Bilateral concentric, unilateral eccentric"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","3","4","75%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","4","6","8",120,180,"Pull with your chest to the bar"],["cgbp","3","11","60%",120,180,"Shoulder width grip"],["cablerow","3","15","9",120,180,"Pull via shoulder extension"],["fly21","3","7/7/7","8",60,120,"7 reps top half of ROM, 7 reps bottom half of ROM, 7 reps full ROM"],["csrowband","2","20","8",60,120,"Focus on protraction/retraction"],["dbcurl","3","15","9",60,120,"Supinate against the dumbbell"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","70%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","8",60,120,"Squeeze your glutes"],["wcrunch","3","10","7",60,120,"Round your back as you crunch"]],[["incline","3","8","65%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","8",120,180,"Rpe8 AMRAP, then do 2 forced negatives"],["dip","3","10","8",120,180,"Keep your scapulae retracted and depressed"],["tbar","3","12","8",120,180,"Pull via shoulder adduction"],["ohp","3","12","8",60,120,"Squeeze your glutes to keep your torso upright"],["skull","3","10","9",60,120,"Focus on squeezing your triceps"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","6","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["sldl","3","10","9",120,180,"4-second lowering phase. Keep your hips high"],["ctlegpress","2","20","9",120,180,"Don't stop in between reps"],["goodmorning","3","8","8",60,120,"Keep your spine neutral"],["eccalf","4","6","9",60,120,"Press onto your toes"],["cablecrunch","3","30","9",60,120,"Round your back as you crunch"]],[["bench","3","8","70%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","9",120,180,"Pull your elbows down and in"],["pauseincline","3","8","9",120,180,"3-second pause"],["pendlay","3","10/10","9",120,180,"10 reps pendlay row, 10 reps bent over row"],["ctmspress","2","12","9",60,120,"Don't stop in between reps"],["mlateral","3","12/12","9",60,120,"Dropset"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]],[["deadlift","4","5","80%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","10","65%",180,240,"Keep your torso upright"],["hipthrust","3","12","9",120,180,"Fully extend your hips"],["ctlyingcurl","3","20","10",60,120,"Flex your hamstrings"],["eolegext","3","12","8",60,120,"12 reps each leg. Bilateral concentric, unilateral eccentric"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","4","4","75%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","5","6","9",120,180,"Pull with your chest to the bar"],["cgbp","3","12","60%",120,180,"Shoulder width grip"],["cablerow","3","15","9",120,180,"Pull via shoulder extension"],["fly21","3","7/7/7","9",60,120,"7 reps top half of ROM, 7 reps bottom half of ROM, 7 reps full ROM"],["csrowband","2","20","9",60,120,"Focus on protraction/retraction"],["dbcurl","3","15","10",60,120,"Supinate against the dumbbell"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","70%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","9",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","9",60,120,"Squeeze your glutes"],["wcrunch","3","10","8",60,120,"Round your back as you crunch"]],[["incline","3","8","65%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","10",120,180,"Amrap, then do 2 forced negatives"],["dip","3","10","9",120,180,"Keep your scapulae retracted and depressed"],["tbar","3","12","9",120,180,"Pull via shoulder adduction"],["ohp","3","12","8",60,120,"Squeeze your glutes to keep your torso upright"],["skull","3","10","9",60,120,"Focus on squeezing your triceps"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","4","77.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["deficitdl","2","6","70%",120,180,"2\" deficit, can use 35 lb plates to create deficit"],["legpress","2","15","8",120,180,"Low foot positioning","A1"],["legext","2","15","8",60,120,"Keep your spine neutral","A2"],["ctseatedcalf","2","20","8",60,120,"Press onto your toes"],["hlr","3","12","8",60,120,"Round your back as you crunch"]],[["bench","3","6","72.5%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","8",120,180,"Pull your elbows down and in"],["mchest","3","15","7",120,180,"Focus on squeezing your chest"],["ecablerow","3","15","8",120,180,"2-second lowering phase"],["mspress","2","12","8",60,120,"Don't stop in between reps"],["frontlat","3","15/15","9",60,120,"15 reps front raise, 15 reps lateral raise"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","2","5","82.5%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","8","67.5%",180,240,"Keep your torso upright"],["bss","3","15","8",120,180,"Elevate your back foot 12\""],["legext","3","20","8",60,120,"Flex your quads","A1"],["legcurl","3","20","8",60,120,"Flex your hamstrings","A2"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","2","4","77.5%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","3","6","7",120,180,"Pull with your chest to the bar"],["cgbp","3","10","62.5%",120,180,"Shoulder width grip"],["bandtbar","3","12","8",120,180,"Focus on scapular retraction"],["pecdeck","3","15","8",60,120,"Squeeze your pecs"],["dbrow","2","12","8",60,120,"Pull via shoulder extension"],["ez21","3","7/7/7","8",60,120,"7 reps bottom half of ROM, 7 reps top half of ROM, 7 reps full ROM"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","72.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","8",60,120,"Squeeze your glutes"],["wcrunch","3","10","7",60,120,"Round your back as you crunch"]],[["incline","3","8","67.5%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","8",120,180,"Rpe8 AMRAP, then do 2 forced negatives"],["dip","3","10","8",120,180,"Keep your scapulae retracted and depressed"],["suprow","3","15","8",120,180,"Pull via shoulder extension"],["pushpress","3","6","8",60,120,"Control the negative"],["kickback","3","15","9",60,120,"Focus on squeezing your triceps"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","5","77.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["deficitdl","2","6","8",120,180,"2\" deficit, can use 35 lb plates to create deficit"],["legpress","2","15","8",120,180,"Low foot positioning","A1"],["legext","2","15","8",60,120,"Keep your spine neutral","A2"],["ctseatedcalf","2","20","9",60,120,"Press onto your toes"],["hlr","3","12","8",60,120,"Round your back as you crunch"]],[["bench","3","7","72.5%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","8",120,180,"Pull your elbows down and in"],["mchest","3","15","8",120,180,"Focus on squeezing your chest"],["ecablerow","3","15","9",120,180,"2-second lowering phase"],["mspress","2","12","9",60,120,"Don't stop in between reps"],["frontlat","3","15/15","9",60,120,"15 reps front raise, 15 reps lateral raise"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","3","5","82.5%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","9","67.5%",180,240,"Keep your torso upright"],["bss","3","15","8",120,180,"Elevate your back foot 12\""],["legext","3","20","8",60,120,"Flex your quads","A1"],["legcurl","3","20","8",60,120,"Flex your hamstrings","A2"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","3","4","77.5%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","4","6","8",120,180,"Pull with your chest to the bar"],["cgbp","3","11","62.5%",120,180,"Shoulder width grip"],["bandtbar","3","12","9",120,180,"Focus on scapular retraction"],["pecdeck","3","15","8",60,120,"Squeeze your pecs"],["dbrow","2","12","8",60,120,"Pull via shoulder extension"],["ez21","3","7/7/7","9",60,120,"7 reps bottom half of ROM, 7 reps top half of ROM, 7 reps full ROM"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","72.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","8",60,120,"Squeeze your glutes"],["wcrunch","3","10","7",60,120,"Round your back as you crunch"]],[["incline","3","8","67.5%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","8",120,180,"Rpe8 AMRAP, then do 2 forced negatives"],["dip","3","10","8",120,180,"Keep your scapulae retracted and depressed"],["suprow","3","15","8",120,180,"Pull via shoulder extension"],["pushpress","3","6","8",60,120,"Control the negative"],["kickback","3","15","9",60,120,"Focus on squeezing your triceps"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","6","77.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["deficitdl","3","10","9",120,180,"2\" deficit, can use 35 lb plates to create deficit"],["legpress","2","20","9",120,180,"Low foot positioning","A1"],["legext","3","8","8",60,120,"Keep your spine neutral","A2"],["ctseatedcalf","4","6","9",60,120,"Press onto your toes"],["hlr","3","30","9",60,120,"Round your back as you crunch"]],[["bench","3","8","72.5%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["pulldown","3","10","9",120,180,"Pull your elbows down and in"],["mchest","3","8","9",120,180,"Focus on squeezing your chest"],["ecablerow","3","10/10","9",120,180,"2-second lowering phase"],["mspress","2","12","9",60,120,"Don't stop in between reps"],["frontlat","3","12/12","9",60,120,"15 reps front raise, 15 reps lateral raise"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]],[["deadlift","4","5","82.5%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","10","67.5%",180,240,"Keep your torso upright"],["bss","3","12","9",120,180,"Elevate your back foot 12\""],["legext","3","20","10",60,120,"Flex your quads","A1"],["legcurl","3","12","8",60,120,"Flex your hamstrings","A2"],["lowerwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]],[["ohp","4","4","77.5%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","5","6","9",120,180,"Pull with your chest to the bar"],["cgbp","3","12","62.5%",120,180,"Shoulder width grip"],["bandtbar","3","15","9",120,180,"Focus on scapular retraction"],["pecdeck","3","7/7/7","9",60,120,"Squeeze your pecs"],["dbrow","2","20","9",60,120,"Pull via shoulder extension"],["ez21","3","15","10",60,120,"7 reps bottom half of ROM, 7 reps top half of ROM, 7 reps full ROM"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","72.5%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","9",120,180,"15 steps per leg"],["seatedcurl","3","15","9",0,0,"Focus on squeezing your hamstrings","A1"],["pullthrough","3","15","9",60,120,"Focus on squeezing your quads","A2"],["abduction","3","15","9",60,120,"Squeeze your glutes"],["wcrunch","3","10","8",60,120,"Round your back as you crunch"]],[["incline","3","8","67.5%",120,180,"Keep your elbows out"],["ngpullup","3","AMRAP/2","10",120,180,"Rpe8 AMRAP, then do 2 forced negatives"],["dip","3","10","9",120,180,"Keep your scapulae retracted and depressed"],["suprow","3","12","9",120,180,"Pull via shoulder extension"],["pushpress","3","12","8",60,120,"Control the negative"],["kickback","3","10","9",60,120,"Focus on squeezing your triceps"],["upperwp","2-3","15-20","10",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","4","80%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["hipthrust","2","10","8",120,180,"Squeeze your glutes"],["legpress","2","15","8",120,180,"Low foot positioning"],["hyper45","3","10","8",60,120,"Keep your spine neutral"],["calf","3","10","8",60,120,"Press onto your toes"],["hlr","3","12","8",60,120,"Round your back as you crunch"]],[["bench","3","6","75%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["suppulldown","3","12","8",120,180,"Pull via shoulder extension"],["floorpress","3","10","7",120,180,"Focus on squeezing your chest"],["highrow","3","12","8",120,180,"Stretch your lats at the top"],["arnold","2","15","8",60,120,"Externally rotate while you press"],["uprow","3","20","9",60,120,"Perform lying back"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","2","5","85%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","8","70%",180,240,"Keep your torso upright"],["bandlegpress","3","20","8",120,180,"Keep your knees out"],["sllegext","3","12","8",60,120,"12 reps each leg"],["slidecurl","3","15","8",60,120,"Flex your hamstrings"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","2","4","80%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","3","6","7",120,180,"Pull with your chest to the bar"],["cgbp","3","10","65%",120,180,"Shoulder width grip"],["bbrow","3","10","8",120,180,"Pull to your upper abs"],["pushup","2","AMRAP/2","8",60,120,"Squeeze your pecs"],["pullapart","2","30","8",60,120,"Pull via shoulder extension"],["hammer","3","10","8",60,120,"3-second lowering phase"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["stepup","3","12","9",0,0,"Set the box to ~parallel"],["revhyper","3","15","9",60,120,"Focus on squeezing your glutes"],["cableabd","3","10","8",60,120,"Squeeze your glutes"],["plank","3",":30","7",60,120,"Flex your abs"]],[["incline","3","8","70%",120,180,"Keep your elbows out"],["sapulldown","3","12","8",120,180,"Lean away at the top, crunch towards the working arm as you pull down"],["california","3","10","8",120,180,"Concentric is a close-grip bench, eccentric is a skull crusher"],["cablerow","3","20","8",120,180,"Pull via shoulder extension"],["military","3","10","8",60,120,"Flex your delts"],["ropeohext","3","10","9",60,120,"Use your non-working arm to assist with the concentric"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","5","80%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["hipthrust","2","10","8",120,180,"Squeeze your glutes"],["legpress","2","15","8",120,180,"Low foot positioning"],["hyper45","3","10","8",60,120,"Keep your spine neutral"],["calf","3","10","8",60,120,"Press onto your toes"],["hlr","3","12","8",60,120,"Round your back as you crunch"]],[["bench","3","7","75%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["suppulldown","3","12","8",120,180,"Pull via shoulder extension"],["floorpress","3","10","7",120,180,"Focus on squeezing your chest"],["highrow","3","12","8",120,180,"Stretch your lats at the top"],["arnold","2","15","8",60,120,"Externally rotate while you press"],["uprow","3","20","9",60,120,"Perform lying back"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","3","5","85%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","9","70%",180,240,"Keep your torso upright"],["bandlegpress","3","20","8",120,180,"Keep your knees out"],["sllegext","3","12","8",60,120,"12 reps each leg"],["slidecurl","3","15","8",60,120,"Flex your hamstrings"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","3","4","80%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","4","6","7",120,180,"Pull with your chest to the bar"],["cgbp","3","11","65%",120,180,"Shoulder width grip"],["bbrow","3","10","8",120,180,"Pull to your upper abs"],["pushup","2","AMRAP/2","8",60,120,"Squeeze your pecs"],["pullapart","2","30","8",60,120,"Pull via shoulder extension"],["hammer","3","10","8",60,120,"3-second lowering phase"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["stepup","3","12","9",0,0,"Set the box to ~parallel"],["revhyper","3","15","9",60,120,"Focus on squeezing your glutes"],["cableabd","3","10","8",60,120,"Squeeze your glutes"],["plank","3",":30","7",60,120,"Flex your abs"]],[["incline","3","8","70%",120,180,"Keep your elbows out"],["sapulldown","3","12","8",120,180,"Lean away at the top, crunch towards the working arm as you pull down"],["california","3","10","8",120,180,"Concentric is a close-grip bench, eccentric is a skull crusher"],["cablerow","3","20","8",120,180,"Pull via shoulder extension"],["military","3","10","8",60,120,"Flex your delts"],["ropeohext","3","10","9",60,120,"Use your non-working arm to assist with the concentric"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]],[[["squat","3","6","80%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["hipthrust","2","10","8",120,180,"Squeeze your glutes"],["legpress","2","15","8",120,180,"Low foot positioning"],["hyper45","3","10","8",60,120,"Keep your spine neutral"],["calf","3","10","8",60,120,"Press onto your toes"],["hlr","3","12","8",60,120,"Round your back as you crunch"]],[["bench","3","8","75%",120,180,"Elbows at a 45° angle. Keep your scapulae retracted and depressed"],["suppulldown","3","12","8",120,180,"Pull via shoulder extension"],["floorpress","3","10","7",120,180,"Focus on squeezing your chest"],["highrow","3","12","8",120,180,"Stretch your lats at the top"],["arnold","2","15","8",60,120,"Externally rotate while you press"],["uprow","3","20","9",60,120,"Perform lying back"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["deadlift","4","5","85%",180,300,"Brace your lats, chest tall, hips high, pull the slack out of the bar prior to moving it off the ground"],["frontsquat","3","10","70%",180,240,"Keep your torso upright"],["bandlegpress","3","20","8",120,180,"Keep your knees out"],["sllegext","3","12","8",60,120,"12 reps each leg"],["slidecurl","3","15","8",60,120,"Flex your hamstrings"],["lowerwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["ohp","4","4","80%",120,180,"Squeeze your glutes to keep your torso upright"],["pullup","5","6","7",120,180,"Pull with your chest to the bar"],["cgbp","3","11","65%",120,180,"Shoulder width grip"],["bbrow","3","10","8",120,180,"Pull to your upper abs"],["pushup","2","AMRAP/2","8",60,120,"Squeeze your pecs"],["pullapart","2","30","8",60,120,"Pull via shoulder extension"],["hammer","3","10","8",60,120,"3-second lowering phase"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]],[["squat","3","8","75%",180,240,"Sit back and down, 15° toe flare, drive your knees out laterally"],["lunge","3","15","8",120,180,"15 steps per leg"],["stepup","3","12","9",0,0,"Set the box to ~parallel"],["revhyper","3","15","9",60,120,"Focus on squeezing your glutes"],["cableabd","3","10","8",60,120,"Squeeze your glutes"],["plank","3",":30","7",60,120,"Flex your abs"]],[["incline","3","8","70%",120,180,"Keep your elbows out"],["sapulldown","3","12","8",120,180,"Lean away at the top, crunch towards the working arm as you pull down"],["california","3","10","8",120,180,"Concentric is a close-grip bench, eccentric is a skull crusher"],["cablerow","3","20","8",120,180,"Pull via shoulder extension"],["military","3","10","8",60,120,"Flex your delts"],["ropeohext","3","10","9",60,120,"Use your non-working arm to assist with the concentric"],["upperwp","2-3","15-20","9",60,120,"Focus on mind-muscle connection"]]]],"exercises":{"squat":["Back Squat","Barbell_Full_Squat",["Hack Squat","Smith Machine Squat","Leg Press + 15 Back Extensions"],"bEv6CCg2BC8"],"sldl":["Eccentric-Accentuated Stiff-Leg Deadlift","Stiff-Legged_Barbell_Deadlift",["Barbell RDL","Block Pull (4\")"],"1uDiW5--rAE"],"ctlegpress":["Constant-Tension Leg Press","Leg_Press",["Goblet Squat","Walking Lunge"],"qdeF__Vs85o"],"goodmorning":["Good Morning","Good_Morning",["Barbell RDL","Reverse Hyper","Glute-Ham Raise"],"YA-h3n9L4YU"],"eccalf":["Eccentric / Constant-Tension Standing Calf Raise","Standing_Calf_Raises",["Seated Calf Raise","Leg Press Calf Press"],"-qsRtp_PbVM"],"cablecrunch":["Cable Crunch","Cable_Crunch",["Bodyweight Crunch","V Sit-up","Bicycle Crunch"],"ToJeyhydUxU"],"deadlift":["Deadlift","Barbell_Deadlift",["Sumo Deadlift"],"VL5Ab0T07e4"],"frontsquat":["Front Squat","Front_Squat_Clean_Grip",["Goblet Squat","Safety Bar Squat"],"v-mQm_droHg"],"hipthrust":["Barbell Hip Thrust","Barbell_Hip_Thrust",["Glute Bridge","DB 45° Hyperextension"],"xDmFkJxPzeM"],"ctlyingcurl":["Constant-Tension Lying Leg Curl","Lying_Leg_Curls",["Seated Leg Curl","Sliding Leg Curl"],"1Tq3QdYUuHs"],"eolegext":["Unilateral Eccentric-Overloaded Leg Extension","Leg_Extensions",["Leg Extension"],"E_pTa-uagpE"],"lowerwp":["Lower Body Weak Point","",[],""],"lunge":["Dumbbell Walking Lunge","Dumbbell_Lunges",["Dumbbell Step-up","Bulgarian Split Squat"],"D7KaRcUTQeE"],"seatedcurl":["Seated Leg Curl","Seated_Leg_Curl",["Lying Leg Curl","Sliding Leg Curl"],"ELOCsoDSmrg"],"pullthrough":["Cable Pull-Through","Pull_Through",["Barbell RDL","Glute Kickback"],"WljI_Cg7ths"],"abduction":["Machine Hip Abduction","Thigh_Abductor",["Lateral Band Walk"],"GmRSV_n2E_0"],"wcrunch":["Weighted Crunch","Weighted_Crunches",["Cable Crunch","Dumbbell Loaded Crunch"],"_O1xunCfYEM"],"deficitdl":["Deficit Deadlift","Deficit_Deadlift",["Block Pull (4\")"],"CpWsUsqBtN8"],"legpress":["Leg Press","Leg_Press",["Goblet Squat","Walking Lunge"],"qdeF__Vs85o"],"legext":["Leg Extension","Leg_Extensions",["Sissy Squat","Goblet Squat"],"YyvSfVjQeL0"],"ctseatedcalf":["Constant-Tension Seated Calf Raise","Seated_Calf_Raise",["Standing Calf Raise","Leg Press Calf Press"],""],"hlr":["Hanging Leg Raise","Hanging_Leg_Raise",["Captain's Chair Crunch","Reverse Crunch"],"hdng3Nm1x_E"],"bss":["Bulgarian Split Squat","Split_Squat_with_Dumbbells",["Smith Machine Reverse Lunge","Dumbbell Walking Lunge"],"2C-uNgKwPLE"],"legcurl":["Leg Curl","Lying_Leg_Curls",["Seated Leg Curl","Sliding Leg Curl"],"1Tq3QdYUuHs"],"hyper45":["Barbell 45° Hyperextension","Hyperextensions_Back_Extensions",["DB 45° Hyperextension","Reverse Hyper","Glute-Ham Raise"],"GpG21_BpEfs"],"calf":["Standing Calf Raise","Standing_Calf_Raises",["Seated Calf Raise","Leg Press Calf Press"],"-qsRtp_PbVM"],"bandlegpress":["Knee-Banded Leg Press","Leg_Press",["Leg Press","Knee-Banded Bodyweight Squat"],"7H-KpNTYw_k"],"sllegext":["Single-Leg Leg Extension","Single-Leg_Leg_Extension",["Leg Extension","Sissy Squat"],"I1F58vIjbvc"],"slidecurl":["Sliding Leg Curl","Ball_Leg_Curl",["Lying Leg Curl","Seated Leg Curl"],"RmsTFCQ3Qig"],"stepup":["Dumbbell Step-up","Dumbbell_Step_Ups",["Walking Lunge","Single-Leg Leg Press"],"NcBM4Pl0ZU8"],"revhyper":["Reverse Hyper","Reverse_Hyperextension",["Glute-Ham Raise","Cable Pull-Through","Glute Kickback"],"3d9_W--eUcI"],"cableabd":["Cable Standing Hip Abduction","Cable_Hip_Adduction",["Machine Hip Abduction","Lateral Band Walk"],""],"plank":["Plank","Plank",["Pallof Press","Hanging Leg Raise Hold"],"pSHjTRCQxIw"],"bench":["Barbell Bench Press","Barbell_Bench_Press_-_Medium_Grip",["Dumbbell Press","Machine Chest Press","Smith Machine Bench Press"],"vcBig73ojpE"],"pulldown":["Lat Pulldown","Wide-Grip_Lat_Pulldown",["Pull-up","Supinated Pulldown"],"CAwf7n6Luuc"],"pauseincline":["Pause Dumbbell Incline Press","Incline_Dumbbell_Press",["Pause Barbell Incline Press","Deficit Push-up"],"0G2_XV7slIg"],"pendlay":["Pendlay Row / Barbell Bent-Over Row","Bent_Over_Barbell_Row",["Seated Cable Row","Machine T-Bar Row"],"axoeDmW0oAY"],"ctmspress":["Constant-Tension Machine Shoulder Press","Machine_Shoulder_Military_Press",["Seated Dumbbell Shoulder Press"],"Wqq43dKW1TU"],"mlateral":["Machine Lateral Raise","Cable_Seated_Lateral_Raise",["Cable Lateral Raise","Dumbbell Lateral Raise"],"0FUpcwj_1z4"],"upperwp":["Upper Body Weak Point","",[],""],"ohp":["Barbell Overhead Press","Standing_Military_Press",["Seated Barbell Overhead Press"],"_RlRDWO2jfg"],"pullup":["Wide-Grip Pull-up","Pullups",["Lat Pulldown","Neutral-Grip Pull-up"],"Hdc7Mw6BIEE"],"cgbp":["Barbell Close-Grip Bench Press","Close-Grip_Barbell_Bench_Press",["Floor Press","Dumbbell Close-Grip Bench Press"],"nEF0bv2FW94"],"cablerow":["Cable Close-Grip Row","Seated_Cable_Rows",["Cable Wide-Grip Row","Dumbbell Row"],"GZbfZ033f74"],"fly21":["Cable Flye 21s","Cable_Crossover",["Cable Fly","Dumbbell Fly","Pec Deck"],"-EIhKMDSjBY"],"csrowband":["Machine Chest-Supported Row with Band","Leverage_Iso_Row",["Machine Chest-Supported Row","Dumbbell Chest-Supported Row"],"WJIt0SQekVU"],"dbcurl":["Supinated Dumbbell Curl","Dumbbell_Bicep_Curl",["Concentration Curl","Preacher Curl"],"sAq_ocpRh_I"],"incline":["Barbell Incline Press","Barbell_Incline_Bench_Press_-_Medium_Grip",["Dumbbell Incline Press","Machine Incline Press"],"jPLdzuHckI8"],"ngpullup":["Neutral-Grip Pull-up + Negatives","V-Bar_Pullup",["Neutral-Grip Pulldown","Chin-up"],"Zr8hHd2Q2Eo"],"dip":["Dip","Dips_-_Chest_Version",["Assisted Dip","Machine Dip","Close-Grip Bench Press"],"yN6Q1UI_xkE"],"tbar":["Seated T-Bar Row","T-Bar_Row_with_Handle",["Chest-Supported Row","Cable Single-Arm Row"],"sw1LwNZ3F_w"],"skull":["Myo-Reps Floor Skull Crusher","EZ-Bar_Skullcrusher",["EZ-Bar Skull Crusher","Floor Press","JM Press"],"popGXI-qs98"],"mchest":["Machine Chest Press","Leverage_Chest_Press",["Dumbbell Press","Push-up"],"xUm0BiZCWlQ"],"ecablerow":["Eccentric-Accentuated Cable Row","Seated_Cable_Rows",["Cable Wide-Grip Row","Dumbbell Row"],""],"mspress":["Machine Shoulder Press","Machine_Shoulder_Military_Press",["Seated Dumbbell Shoulder Press"],"Wqq43dKW1TU"],"frontlat":["DB Front Raise / Lateral Raise","Side_Laterals_to_Front_Raise",["Cable Lateral Raise","Machine Lateral Raise"],""],"bandtbar":["Banded Chest-Supported T-Bar Row","Lying_T-Bar_Row",["Chest-Supported Row","Cable Single-Arm Row"],""],"pecdeck":["Pec Deck","Butterfly",["Cable Fly","Dumbbell Fly"],"-EIhKMDSjBY"],"dbrow":["Dumbbell Row","One-Arm_Dumbbell_Row",["Cable Single-Arm Row","Dumbbell Chest-Supported Row"],"J15nYGtf-TA"],"ez21":["EZ Bar Curl 21s","EZ-Bar_Curl",["EZ-Bar Curl","Dumbbell Curl 21s","Cable Curl 21s"],"i1YgFZB6alI"],"suprow":["Barbell Supinated Row","Reverse_Grip_Bent-Over_Rows",["Seated Cable Row","Machine T-Bar Row"],""],"pushpress":["Barbell Push Press","Push_Press",["Barbell Overhead Press","Machine Shoulder Press"],"ep30avTSMB0"],"kickback":["Cable Triceps Kickback","Tricep_Dumbbell_Kickback",["V-Bar Pressdown","Dumbbell Kickback"],"cvjnkqjxreg"],"suppulldown":["Supinated Lat Pulldown","Underhand_Cable_Pulldowns",["Chin-up","Pronated Lat Pulldown"],"kOQt1sfmgqw"],"floorpress":["Barbell Floor Press","Floor_Press",["Dumbbell Floor Press","Machine Chest Press"],""],"highrow":["Machine High Row","Leverage_High_Row",["Dumbbell Chest-Supported Row","Seated Cable Row"],"w6dxL2fmXRo"],"arnold":["Arnold Press","Arnold_Dumbbell_Press",["Seated Dumbbell Shoulder Press","Machine Shoulder Press"],"6Z15_WdXmVw"],"uprow":["Cable Upright Row","Upright_Cable_Row",["Machine Lateral Raise","Face Pull"],"nwkLwMRHMQo"],"pushup":["Push-up","Pushups",["Dumbbell Floor Press","Machine Chest Press"],"IODxDxX7oi4"],"pullapart":["Band Pull-Apart","Band_Pull_Apart",["Face Pull","Reverse Pec Deck"],""],"hammer":["Eccentric-Accentuated Hammer Curl","Hammer_Curls",["Pronated EZ-Bar Curl","Rope Hammer Curl"],"zC3nLlEvin4"],"bbrow":["Barbell Bent-Over Row","Bent_Over_Barbell_Row",["Seated Cable Row","Machine T-Bar Row"],""],"sapulldown":["Single-Arm Pulldown","One_Arm_Lat_Pulldown",["Lat Pulldown","Cable Single-Arm Row"],""],"california":["California Press","Close-Grip_EZ-Bar_Press",["JM Press","Pin Press","EZ-Bar Skull Crusher"],"fCUeeaWBBSs"],"military":["Military Press","Standing_Military_Press",["Seated Barbell Overhead Press","Machine Shoulder Press"],""],"ropeohext":["Eccentric-Overloaded Rope Overhead Triceps Extension","Cable_Rope_Overhead_Triceps_Extension",["V-Bar Pressdown","Rope Triceps Extension"],"38QQai2Ag9Y"]},"weakPoints":{"upper":[["Chest",["Cable Fly Dropset","Cable Fly 21s"]],["Lats",["Pronated / Supinated Pulldown (8/8)","Cable Pullover Dropset","Elbows Out / Elbows In Row (8/8)"]],["Biceps",["Eccentric-Overloaded Dumbbell Curl","Pronated / Supinated EZ-Bar Curl (8/8)","Asymmetrical DB Curl"]],["Triceps",["Cable Kickback 21s","California Press","Forced Negative Skull Crusher"]],["Delts",["Cable Lateral Raise 21s","Shrug / Lateral Raise Superset","Front / Lateral / Bent Rear Delt Raise Tri-set"]],["Traps",["Barbell Shrug","Ts / Ys / Is","Face Pull / Elbows Out Row"]],["Forearms",["Hammer Curl","Pronated EZ-Bar Curl","Dumbbell Wrist Curl","Farmer Carry"]],["Neck",["Plate Neck Flexion","Plate Lateral Flexion"]]],"lower":[["Quads",["Leg Extension","Unilateral Leg Press","Sissy Squat","Constant-Tension Goblet Squat"]],["Hamstrings",["Lying Leg Curl","Glute-Ham Raise","Swiss Ball Leg Curl","Enhanced-Eccentric Seated Leg Curl"]],["Glutes",["Banded Hip Thrust","Constant-Tension Hip Thrust","Walking Lunge","Machine Hip Abduction Dropset"]],["Calves",["Standing Calf Raise","Seated Calf Raise"]],["Abs",["Bicycle Crunch","Hanging Leg Raise","V Sit-up"]]]}};
 let S = load();
+useProgram(S.program || cleanProgram(BUILTIN));
+function tidy(s) {
+  s = { ...fresh(), ...s };
+  s.prog = { ...DEFAULT_PROG(), ...(s.prog || {}) };
+  s.maxes ||= {};
+  s.program = cleanProgram(s.program) || undefined;
+  // Leftovers from the old Push/Pull/Legs plan (carry-over, day moves, lighter weeks, busy-gym kit).
+  for (const k of ["schedule", "roll", "moves", "lite", "deload", "deloadNo", "lastDeload", "gear", "runnaSwaps"]) delete s[k];
+  // Swaps of the old plan's exercises would rename new ones that reuse an id (squat, bench...).
+  if (!s.prog.migrated) { s.swaps = {}; s.prog.migrated = 1; }
+  const old = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
+  for (const [k, to] of Object.entries(s.runnaMoves || {})) if (to < old) delete s.runnaMoves[k];
+  return s;
+}
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
-  s = s && typeof s === "object" ? s : {};
-  s = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {}, ...s };
-  // One-off day moves and lighter-leg flags only matter for the next couple of weeks.
-  const old = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
-  for (const m of [s.moves, s.lite]) for (const k of Object.keys(m || {})) if (k < old) delete m[k];
-  for (const [k, to] of Object.entries(s.runnaMoves || {})) if (to < old) delete s.runnaMoves[k];
-  for (const [k, sw] of Object.entries(s.runnaSwaps || {})) if (sw.to < old && sw.dest < old) delete s.runnaSwaps[k];
-  s.roll ||= { since: new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), skip: {} };
-  for (const k of Object.keys(s.roll.skip || {})) if (k < s.roll.since) delete s.roll.skip[k];
-  return s;
+  return tidy(s && typeof s === "object" ? s : {});
 }
 let saveT = null;
 function save(now) {
-  ROLL = null;
+  memo = {};
   clearTimeout(saveT);
   const w = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast("Couldn't save. Storage may be full or blocked."); } };
   now ? w() : (saveT = setTimeout(w, 300));
@@ -579,22 +492,32 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
 const todayISO = () => iso(new Date());
 const dowIdx = d => (d.getDay() + 6) % 7;
+const dowOf = dISO => dowIdx(new Date(dISO + "T12:00:00"));
 const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-const fmtRest = s => s >= 120 ? (s / 60 + " min").replace(".5", "½") : s + " s";
+const fmtRest = ([a, b]) => !b ? "none" : b < 120 && a === b ? b + " s" : a === b ? a / 60 + " min" : `${a / 60}–${b / 60} min`;
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
 const e1rm = (w, r) => w > 0 && r > 0 ? w * (1 + Math.min(r, 15) / 30) : 0;
 const variantOf = ex => S.swaps[ex.id] || ex.name;
 const sessionsList = () => Object.values(S.sessions).sort((a, b) => b.date.localeCompare(a.date) || (b.start || 0) - (a.start || 0));
 const filled = x => x && (x.w !== undefined && x.w !== "" || x.r !== undefined && x.r !== "");
+const addDays = (dISO, k) => iso(new Date(new Date(dISO + "T12:00:00").getTime() + k * 864e5));
+const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+const fmtW = v => String(+v.toFixed(2));
+const fmtN = v => String(+v.toFixed(1));
+const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 function weekStart(d = new Date()) { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - dowIdx(x)); return x; }
 function sessionVolume(s) { let v = 0; for (const e of Object.values(s.ex || {})) for (const x of e.sets || []) if (x.done || filled(x)) v += num(x.w) * num(x.r); return v; }
 function doneSets(s) { return Object.values(s.ex || {}).reduce((n, e) => n + (e.sets || []).filter(x => x.done).length, 0); }
-const totalSets = (d, s) => d.ex.reduce((n, e) => n + setsFor(e, s), 0);
-const estMin = d => Math.round(d.ex.reduce((n, e) => n + e.sets * (e.rest + 45), 0) / 60 / 5) * 5;
-function lastFor(dayId, ex, beforeId, v = variantOf(ex)) {
+const totalSets = ex => ex.reduce((n, e) => n + e.sets, 0);
+const estMin = ex => Math.round(ex.reduce((n, e) => n + e.sets * ((e.rest[0] + e.rest[1]) / 2 + 45), 0) / 60 / 5) * 5;
+const isLogged = s => !!(s.end || doneSets(s) > 0 || s.dist || (s.ex && Object.values(s.ex).some(e => e.sets.some(filled))));
+const sessionsOn = dISO => sessionsList().filter(s => s.date === dISO && isLogged(s));
+const sessName = s => s.wk ? `${byId(s.day).name} · Wk ${s.wk}` : byId(s.day).name;
+// The last time you did this exercise (same variation), on any day of the program.
+function lastFor(exId, beforeId, v) {
   for (const s of sessionsList()) {
-    if (s.id === beforeId || s.day !== dayId) continue;
-    const e = s.ex?.[ex.id];
+    if (s.id === beforeId) continue;
+    const e = s.ex?.[exId];
     if (e && e.v === v && e.sets?.some(filled)) return { s, sets: e.sets };
   }
   return null;
@@ -609,112 +532,74 @@ function toast(msg) {
   if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
   t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600);
 }
+let memo = {};
+
+// ================= Where you are in the program =================
+// The program runs in order: Week 1 Day 1, Day 2 ... Week 9 Day 6. The next session is the one after
+// the last one you logged, so a missed day simply pushes everything along. Skip and "Start from here"
+// set S.prog.cursor, which wins until you log something newer.
+const order = () => SPLITS[S.prog.split] || SPLITS[6];
+const seqLen = () => WEEKS * order().length;
+const posOf = (wk, d) => { const o = order(); let i = o.indexOf(d); if (i < 0) i = Math.max(0, o.indexOf(6) - 1); return (wk - 1) * o.length + i; };
+const atPos = p => { const o = order(); return { wk: Math.floor(p / o.length) + 1, d: o[p % o.length], p }; };
+function nextPos() {
+  if (memo.next !== undefined) return memo.next;
+  const last = Object.values(S.sessions).filter(s => s.wk && isLogged(s)).sort((a, b) => (b.start || 0) - (a.start || 0))[0];
+  const c = S.prog.cursor;
+  return memo.next = c && (!last || c.at > (last.start || 0)) ? posOf(c.wk, c.d) : last ? posOf(last.wk, dnum(last.day)) + 1 : 0;
+}
+// Upcoming program sessions laid onto your lift days, starting today (or tomorrow if today's is done).
+function upcoming() {
+  if (memo.up) return memo.up;
+  const out = {}, today = todayISO(), days = S.prog.days.some(Boolean) ? S.prog.days : DEFAULT_PROG().days;
+  const doneToday = sessionsOn(today).some(s => s.wk);
+  let p = nextPos();
+  for (let k = 0; k < 42 && p < seqLen(); k++) {
+    const dd = addDays(today, k);
+    if (k === 0 && doneToday) continue;
+    if (days[dowOf(dd)]) out[dd] = atPos(p++);
+  }
+  return memo.up = out;
+}
+const nextLabel = () => { const e = Object.entries(upcoming())[0]; return e ? `Wk ${e[1].wk} · ${dayOf(e[1].d).name}` : "–"; };
+function setCursor(wk, d) { S.prog.cursor = { wk, d, at: Date.now() }; save(true); }
+
+// ================= Loads =================
+const step = () => S.unit === "lb" ? 5 : 2.5;
+const roundW = v => Math.round(v / step()) * step();
+const maxFor = id => num(S.maxes[id]) || (MAXOF[id] ? num(S.maxes[MAXOF[id]]) : 0);
+// Best estimated max from your log in the last 12 weeks, for the plain version of the lift.
+function estMax(id) {
+  const name = EX[id]?.[0], from = addDays(todayISO(), -84);
+  let best = 0;
+  for (const s of Object.values(S.sessions)) {
+    const e = s.ex?.[id]; if (!e || e.v !== name || s.date < from) continue;
+    for (const x of e.sets) best = Math.max(best, e1rm(num(x.w), num(x.r)));
+  }
+  return best ? roundW(best) : 0;
+}
+const targetW = ex => ex.pct && maxFor(ex.id) ? roundW(ex.pct * maxFor(ex.id)) : 0;
+// The program's %1RM warm-up pyramid for primary lifts.
+function warmup(ex) {
+  const m = maxFor(ex.id), bar = S.unit === "lb" ? 45 : 20; if (!m) return "";
+  const steps = [[bar, 15], ...[[.4, 5], [.5, 4], [.6, 3], [.725, 2]].map(([p, r]) => [roundW(m * p), r])].filter(([w], i, a) => w < targetW(ex) && (i === 0 || w > a[i - 1][0]));
+  return steps.map(([w, r], i) => `${i === 0 ? "Bar" : fmtW(w)}×${r}`).join(" · ");
+}
+const loadChip = (ex, s) => ex.pct ? `<span class="chip"><b>${esc(ex.load)}</b> 1RM${targetW(ex) ? ` → <b>${fmtW(targetW(ex))}</b> ${esc(s?.unit || S.unit)}` : ""}</span>` : ex.load ? `<span class="chip">RPE <b>${esc(ex.load)}</b></span>` : "";
 
 // ================= Coaching =================
-const addDays = (dISO, k) => iso(new Date(new Date(dISO + "T12:00:00").getTime() + k * 864e5));
-const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
-const fmtW = v => String(+v.toFixed(2));
-// Main kit of each planned exercise, so "Gym is busy" knows what to swap away from.
-const EQ = { bench: "Barbell", ohp: "Dumbbells", incline: "Dumbbells", lateral: "Cable", fly: "Machine", ohext: "Cable", pushdown: "Cable",
-  pullup: "Bodyweight", row: "Dumbbells", onearm: "Cable", facepull: "Cable", curl: "Barbell", hammer: "Dumbbells",
-  squat: "Barbell", rdl: "Barbell", split: "Dumbbells", legcurl: "Machine", legext: "Machine", calf: "Machine", abs: "Bodyweight",
-  pulldown: "Cable", dbpress: "Dumbbells", cablerow: "Cable", lateral2: "Dumbbells", rear: "Machine", incurl: "Dumbbells", skull: "Barbell" };
-const GEAR = ["Barbell", "Dumbbells", "Machine", "Cable", "Smith", "Band", "Bodyweight"];
-// Hard sets each exercise gives a muscle: 1 where it's the target, ½ where it helps.
-const MUSCLE = { bench: { Chest: 1, Triceps: .5 }, ohp: { "Side delts": .5, Triceps: .5 }, incline: { Chest: 1, Triceps: .5 }, lateral: { "Side delts": 1 }, fly: { Chest: 1 },
-  ohext: { Triceps: 1 }, pushdown: { Triceps: 1 }, pullup: { Back: 1, Biceps: .5 }, row: { Back: 1, "Rear delts": .5, Biceps: .5 }, onearm: { Back: 1, Biceps: .5 },
-  facepull: { "Rear delts": 1 }, curl: { Biceps: 1 }, hammer: { Biceps: 1 }, squat: { Quads: 1, Glutes: .5 }, rdl: { Hamstrings: 1, Glutes: 1 },
-  split: { Quads: 1, Glutes: 1 }, legcurl: { Hamstrings: 1 }, legext: { Quads: 1 }, calf: { Calves: 1 }, abs: { Abs: 1 },
-  pulldown: { Back: 1, Biceps: .5 }, dbpress: { Chest: 1, Triceps: .5 }, cablerow: { Back: 1, "Rear delts": .5, Biceps: .5 }, lateral2: { "Side delts": 1 },
-  rear: { "Rear delts": 1 }, incurl: { Biceps: 1 }, skull: { Triceps: 1 } };
-// Weekly target ranges: about 10–20 for the big muscles, less for ones that get indirect work.
-const MUSCLES = [["Chest", 10, 20], ["Back", 10, 20], ["Quads", 8, 16], ["Hamstrings", 6, 14], ["Glutes", 4, 12], ["Side delts", 6, 16],
-  ["Rear delts", 4, 12], ["Biceps", 6, 14], ["Triceps", 6, 14], ["Calves", 4, 10], ["Abs", 2, 8]];
-const LOWER = new Set(["squat", "rdl", "split"]);
-
-// A session can run lighter: "lite" (bad readiness or a hard run next to leg day), "deload" (lighter week), "taper" (race week legs).
-const MODES = { lite: "Lighter session: one set fewer on 3-set lifts and one RPE easier. Same weights.",
-  deload: "Lighter week: half the sets at RPE 6, same weights. You come back stronger next week.",
-  taper: "Race taper: half the sets at RPE 6 so your legs are fresh for the 5K." };
-const setsFor = (ex, s) => !s?.mode ? ex.sets : s.mode === "lite" ? (ex.sets >= 3 ? ex.sets - 1 : ex.sets) : Math.ceil(ex.sets / 2);
-const rpeFor = (ex, s) => !s?.mode ? ex.rpe : s.mode === "lite" ? ex.rpe.replace(/\d+/g, n => n - 1) : "6";
-function modeFor(dayId, date) {
-  if (byId(dayId).run) return undefined;
-  if (S.deload === iso(weekStart(new Date(date + "T12:00:00")))) return "deload";
-  const race = raceDate();
-  if (dayId === "legs" && race && race > date && daysBetween(date, race) <= 7) return "taper";
-  return S.lite?.[date] && dayId === "legs" ? "lite" : undefined;
-}
-function setMode(s, m) {
-  s.mode = m || undefined;
-  for (const ex of byId(s.day).ex) { const e = s.ex[ex.id]; if (!e) continue;
-    while (e.sets.length > setsFor(ex, s) && !filled(e.sets[e.sets.length - 1]) && !e.sets[e.sets.length - 1].done) e.sets.pop(); }
-  save(); render();
-}
-
-// Double progression from the last time you did this variation.
-function nudge(ex, last, s) {
-  if (!last) return null;
-  const sets = last.sets.filter(x => num(x.r) > 0).slice(0, ex.sets);
-  if (!sets.length) return null;
-  const unit = s?.unit || S.unit, w = Math.max(0, ...sets.map(x => num(x.w)));
-  const reps = sets.map(x => num(x.r));
-  if (s?.mode) return { kind: "hold", w, rs: reps, text: "Same weight, easy effort" };
-  if (sets.length >= Math.min(ex.sets, last.sets.length) && reps.every(r => r >= ex.hi)) {
-    const step = (LOWER.has(ex.id) ? 5 : 2.5) * (unit === "lb" ? 2 : 1);
-    return w ? { kind: "up", w: w + step, rs: reps.map(() => ex.lo), text: `▲ Go up to ${fmtW(w + step)} ${unit}` }
-      : { kind: "up", w: 0, rs: reps.map(r => r + 1), text: "▲ Add weight or a harder version" };
-  }
-  if (w && reps.reduce((a, b) => a + b, 0) / reps.length < ex.lo) {
-    const inc = unit === "lb" ? 5 : 2.5, down = Math.max(inc, Math.round(w * .9 / inc) * inc);
-    return { kind: "down", w: down, rs: reps.map(() => ex.lo), text: `▼ Drop to ${fmtW(down)} ${unit} and own the reps` };
-  }
-  return { kind: "rep", w, rs: reps.map(r => Math.min(ex.hi, r + 1)), text: "+1 rep a set, same weight" };
-}
-
-// Best estimated 1RM per session for one variation. Cached per render, since plateaus and readiness ask for it a lot.
-let memo = {};
-function series(name) {
-  return memo["s:" + name] ||= Object.values(S.sessions).map(s => {
-    const e = Object.values(s.ex || {}).find(e => e.v === name); if (!e) return null;
-    let best = 0, top = null;
-    for (const x of e.sets) { const v = e1rm(num(x.w), num(x.r)); if (v > best) { best = v; top = x; } }
-    return best ? { date: s.date, v: best, top } : null;
-  }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
-}
-// Stalled: trained in the last 2 weeks, but nothing in the last 3 weeks beat the best from before.
-function stalled(name) {
-  const pts = series(name); if (pts.length < 4) return false;
-  const last = pts[pts.length - 1].date, cut = addDays(last, -21);
-  if (pts[0].date >= cut || daysBetween(last, todayISO()) > 14) return false;
-  const recent = pts.filter(p => p.date > cut);
-  return recent.length >= 2 && Math.max(...recent.map(p => p.v)) <= Math.max(...pts.filter(p => p.date <= cut).map(p => p.v));
-}
-const stalledLifts = () => memo.stalled ||= [...new Set(DAYS.flatMap(d => d.ex.map(variantOf)))].filter(stalled);
-
-// Runs near a date, planned or from Runna. "Hard" means it needs fresh legs.
+// Runs near a date from Runna. "Hard" means it needs fresh legs.
 const HARD = /interval|tempo|hill|threshold|fartlek|speed|progression|race|time trial|long run|continuous|5\s?km run/i;
-function runsOn(dISO) {
-  const p = dayPlan(dISO), out = p.runs.map(r => ({ title: r.title, hard: HARD.test(r.title) || dISO === raceDate() }));
-  if (p.id === "quality" || p.id === "easy") out.push({ title: byId(p.id).name, hard: p.id === "quality" });
-  return out;
-}
+const runsOn = dISO => runnaOn(dISO).map(r => ({ title: r.title, hard: HARD.test(r.title) || dISO === raceDate() }));
 function clash(dISO) {
   const race = raceDate();
-  if (race && race > dISO && daysBetween(dISO, race) <= 2) return { hard: true, text: `Your 5K is ${daysBetween(dISO, race) === 1 ? "tomorrow" : "in 2 days"}. Skip legs or keep it very light.` };
+  if (race && race > dISO && daysBetween(dISO, race) <= 2) return { hard: true, text: `Your 5K is ${daysBetween(dISO, race) === 1 ? "tomorrow" : "in 2 days"}. Keep this leg day light, or swap it with an upper day.` };
   const next = runsOn(addDays(dISO, 1)).find(r => r.hard), prev = runsOn(addDays(dISO, -1)).find(r => r.hard), same = runsOn(dISO)[0];
-  if (next) return { hard: true, text: `${next.title} the day after. Heavy legs now would blunt that run.` };
-  if (prev) return { hard: true, text: `${prev.title} the day before. Your legs may still be tired.` };
+  if (next) return { hard: true, text: `${next.title} tomorrow. Stop a rep or two short on the heavy leg work so the run doesn't suffer.` };
+  if (prev) return { hard: true, text: `${prev.title} yesterday. Your legs may still be tired, so warm up well.` };
   if (same) return { hard: false, text: "Run on the same day. Keep them 6+ hours apart if you can, and do the one that matters more first." };
   return null;
 }
-// Closest day this week (from today on) with nothing planned and no hard run either side.
-function freeDay(dISO) {
-  const ws = iso(weekStart(new Date(dISO + "T12:00:00")));
-  const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i)).filter(d => d !== dISO && d >= todayISO() && !dayPlan(d).id && !runsOn(d).length && !clash(d)?.hard);
-  return days.sort((a, b) => Math.abs(daysBetween(dISO, a)) - Math.abs(daysBetween(dISO, b)))[0] || null;
-}
-
 // The 5K: set in Setup, or the last "5k" session in the Runna plan.
 function raceDate() {
   if (S.race) return S.race;
@@ -722,7 +607,7 @@ function raceDate() {
   const k = Object.entries(RUNNA.byDate).filter(([, rs]) => rs.some(r => /5\s?k/i.test(r.title))).map(([d]) => d).sort();
   return k[k.length - 1] || null;
 }
-const runLog = () => Object.values(S.sessions).filter(s => byId(s.day)?.run && num(s.dist) > 0 && num(s.time) > 0).sort((a, b) => a.date.localeCompare(b.date));
+const runLog = () => Object.values(S.sessions).filter(s => byId(s.day).run && num(s.dist) > 0 && num(s.time) > 0).sort((a, b) => a.date.localeCompare(b.date));
 const fmtClock = min => { const t = Math.round(min * 60), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0"); };
 // Riegel's formula from your best continuous run of 1 km+ in the last 6 weeks. Walk-runs would make it look slower than you are.
 const isWalk = s => /walk/i.test(s.variant || "");
@@ -731,86 +616,21 @@ function predict5k() {
   const c = runLog().filter(s => s.date >= from && num(s.dist) >= 1 && !isWalk(s)).map(s => ({ s, t: num(s.time) * Math.pow(5 / num(s.dist), 1.06) }));
   return c.length ? c.reduce((a, b) => b.t < a.t ? b : a) : null;
 }
-const readyScore = r => r && r.sleep && r.sore && r.energy ? (r.sleep + r.sore + r.energy) / 3 : 0;
-
-// Readiness, run clashes, lighter modes and the busy-gym swap, shown above the exercises.
-function coachPanel(s, d) {
-  const out = [], cl = d.id === "legs" && clash(s.date);
-  if (cl) out.push(`<div class="alert ${cl.hard ? "hard" : ""}"><b>${cl.hard ? "Run clash" : "Heads up"}</b><span>${esc(cl.text)}</span>${cl.hard && !s.mode && !doneSets(s) ? `<button class="sbtn" type="button" data-act="mode" data-m="lite">Make it lighter</button>` : ""}</div>`);
-  if (s.mode) out.push(`<div class="alert mode"><b>${s.mode === "lite" ? "Lighter session" : s.mode === "deload" ? "Lighter week" : "Race taper"}</b><span>${esc(MODES[s.mode])}</span><button class="sbtn" type="button" data-act="mode" data-m="">Train as planned instead</button></div>`);
-  const r = s.rd || {}, sc = readyScore(r);
-  if (!sc && !doneSets(s) && !s.rdSkip) out.push(`<div class="panel pad ready"><div class="label">How are you today?</div>
-    ${[["sleep", "Sleep", "awful", "great"], ["sore", "Body", "sore", "fresh"], ["energy", "Energy", "flat", "buzzing"]].map(([k, l, lo, hi]) => `<div class="rdrow"><span>${l}<small>${lo} → ${hi}</small></span><div class="scale">${[1, 2, 3, 4, 5].map(v => `<button type="button" data-act="rd" data-k="${k}" data-v="${v}" aria-pressed="${r[k] === v}" aria-label="${l} ${v} of 5">${v}</button>`).join("")}</div></div>`).join("")}
-    <button class="ghost" type="button" data-act="rdskip" style="justify-self:start">Skip</button></div>`);
-  else if (sc) out.push(`<p class="note">Readiness <b class="num" style="color:var(--ink)">${sc.toFixed(1)}</b> / 5${sc >= 4 ? ". Good day: take the last set of each lift to the top of its RPE." : sc <= 2.4 ? ". Rough day, so keep it smooth." : "."} <a href="#" data-act="rdreset" style="color:var(--amber)">Change</a></p>`);
-  out.push(`<button class="ghost" type="button" data-act="busy" style="justify-self:start">Gym busy? Swap by what's free</button>`);
-  return out.join("");
-}
-// Today's heads-ups: 5K countdown, leg days next to hard runs, and when to take a lighter week.
+// Today's heads-ups: 5K countdown, a leg day next to a hard run, the weekly weigh-in.
 function coachCards() {
-  const out = [], today = todayISO(), ws = iso(weekStart());
-  const race = raceDate();
+  const out = [], today = todayISO(), race = raceDate(), up = upcoming();
   if (race && race >= today) {
     const days = daysBetween(today, race), p = predict5k();
-    out.push(`<button class="panel race" type="button" data-act="runs"><span class="rl"><span class="eyebrow">5K · ${esc(fmtDate(race))}</span><span class="big">${days === 0 ? "Race day" : days + (days === 1 ? " day" : " days")}</span><span class="t2">${days <= 7 && days > 0 ? "Taper week: leg day runs at half the sets." : "See your running progress ›"}</span></span>
+    out.push(`<button class="panel race" type="button" data-act="runs"><span class="rl"><span class="eyebrow">5K · ${esc(fmtDate(race))}</span><span class="big">${days === 0 ? "Race day" : days + (days === 1 ? " day" : " days")}</span><span class="t2">See your running progress ›</span></span>
       <span class="rr"><span class="k">Predicted</span><span class="v">${p ? fmtClock(p.t) : "–"}</span><span class="t2">${p ? "from your best recent run" : "after your first continuous run"}</span></span></button>`);
   }
-  for (let k = 0; k < 7; k++) {
-    const dd = addDays(today, k);
-    if (dayPlan(dd).id !== "legs" || S.lite[dd] || modeFor("legs", dd) || sessionsOn(dd).some(s => s.day === "legs")) continue;
+  for (const dd of [today, addDays(today, 1)]) {
+    const p = up[dd]; if (!p || dayOf(p.d).id[0] !== "l") continue;
     const cl = clash(dd); if (!cl?.hard) continue;
-    const to = freeDay(dd);
-    out.push(`<div class="alert hard"><b>Legs · ${k === 0 ? "today" : esc(fmtDate(dd))}</b><span>${esc(cl.text)}</span><div class="mini">${to ? `<button class="sbtn" type="button" data-act="moveday" data-from="${dd}" data-to="${to}">Move to ${WD[dowIdx(new Date(to + "T12:00:00"))]}</button>` : ""}<button class="sbtn" type="button" data-act="liteday" data-date="${dd}">Make it lighter</button></div></div>`);
+    out.push(`<div class="alert hard"><b>${esc(dayOf(p.d).name)} · ${dd === today ? "today" : "tomorrow"}</b><span>${esc(cl.text)}</span></div>`);
   }
   if (!bwThisWeek()) out.push(`<div class="alert"><b>Weekly weigh-in</b><span>Once a week, same morning routine: after the bathroom, before breakfast.</span>${bwForm()}</div>`);
-  if (S.deload === ws) out.push(`<div class="alert mode"><b>Lighter week</b><span>${esc(MODES.deload)}</span><button class="sbtn" type="button" data-act="deloadend">End it early</button></div>`);
-  else if (S.deloadNo !== ws && (!S.lastDeload || daysBetween(S.lastDeload, today) >= 28)) {
-    const st = stalledLifts(), lifts = Object.values(S.sessions).filter(s => !byId(s.day).run && isLogged(s)).map(s => s.date).sort();
-    const weeks = lifts.length ? Math.floor(daysBetween(S.lastDeload || lifts[0], today) / 7) : 0;
-    if (st.length >= 2 || weeks >= 8) out.push(`<div class="alert mode"><b>Time for a lighter week?</b><span>${st.length >= 2 ? `${st.length} lifts haven't moved in 3 weeks (${esc(st.slice(0, 3).join(", "))}).` : `${weeks} weeks of hard training since your last break.`} A week at half the sets lets fatigue drop, and new bests usually follow.</span>
-      <div class="mini"><button class="sbtn" type="button" data-act="deload">Make this week lighter</button><button class="sbtn" type="button" data-act="deloadno">Not now</button></div></div>`);
-  }
   return out.join("");
-}
-function busyPlan(s) {
-  const gear = S.gear || GEAR;
-  return byId(s.day).ex.map(ex => {
-    const e = s.ex[ex.id], cur = e?.v || variantOf(ex), opts = [[ex.name, EQ[ex.id]], ...ex.alts];
-    const started = !!e?.sets?.some(x => x.done), curEq = (opts.find(o => o[0] === cur) || [])[1];
-    const pick = started || gear.includes(curEq) ? cur : (opts.find(o => gear.includes(o[1])) || [])[0];
-    return { ex, cur, pick, started };
-  });
-}
-function busySheet(s) {
-  const gear = S.gear || GEAR;
-  sheet(`<h3>Gym is busy</h3><p class="note" style="padding:0">Tap the kit that's free right now. Anything that needs something else swaps for today only.</p>
-    <div class="chips">${GEAR.map(g => `<button class="gear" type="button" data-act="gear" data-g="${g}" aria-pressed="${gear.includes(g)}">${g}</button>`).join("")}</div>
-    <div class="panel rows">${busyPlan(s).map(p => `<div class="row"><span class="main"><span class="t1">${esc(p.pick || p.cur)}</span><span class="t2">${p.started ? "Already started, keeping it" : !p.pick ? "Nothing fits that kit, keeping it" : p.pick !== p.cur ? "Instead of " + esc(p.cur) : "No change"}</span></span></div>`).join("")}</div>
-    <button class="cta" type="button" data-act="busyapply">Swap for today</button><button class="cta quiet" type="button" data-act="closesheet">Cancel</button>`);
-}
-function stallSheet(name, exId) {
-  const d = DAYS.find(d => d.ex.some(e => e.id === exId)), pts = series(name), best = Math.max(...pts.map(p => p.v));
-  sheet(`<h3>${esc(name)} has stalled</h3><p class="note" style="padding:0;color:var(--ink)">Your best estimated max is ${Math.round(best)} and nothing in the last 3 weeks has beaten it. That's normal every couple of months. Two fixes that work:</p>
-    <div class="panel pad prose"><ul><li><b>Lighter week.</b> Half the sets for a week. Fatigue drops and strength shows up again.</li><li><b>New variation.</b> A similar exercise gives a fresh stimulus. Come back to this one in 6–8 weeks.</li></ul></div>
-    <div class="btnrow"><button class="cta quiet" type="button" data-act="deload" style="font-size:16px">Lighter week</button><button class="cta quiet" type="button" data-act="swap" data-day="${d.id}" data-ex="${exId}" style="font-size:16px">Swap it</button></div>`);
-}
-const fmtN = v => String(+v.toFixed(1));
-function musclePanel() {
-  const ws = iso(weekStart()), we = addDays(ws, 6), done = {}, plan = {};
-  for (const s of Object.values(S.sessions)) {
-    if (s.date < ws || s.date > we || !s.ex) continue;
-    for (const [id, e] of Object.entries(s.ex)) { const n = e.sets.filter(x => x.done).length; for (const [m, f] of Object.entries(MUSCLE[id] || {})) done[m] = (done[m] || 0) + n * f; }
-  }
-  for (let i = 0; i < 7; i++) {
-    const dd = addDays(ws, i), p = dayPlan(dd), d = byId(p.id); if (!d || d.run) continue;
-    const mode = modeFor(p.id, dd);
-    for (const ex of d.ex) for (const [m, f] of Object.entries(MUSCLE[ex.id] || {})) plan[m] = (plan[m] || 0) + setsFor(ex, { mode }) * f;
-  }
-  const X = v => Math.min(100, v / 24 * 100);
-  return `<div class="group"><div class="label">Hard sets per muscle · this week</div><div class="panel pad" style="display:grid;gap:9px">
-    ${MUSCLES.map(([m, lo, hi]) => { const d = done[m] || 0, p = plan[m] || 0;
-      return `<div class="mus"><span>${m}</span><div class="track"><i class="zone" style="left:${X(lo)}%;width:${X(hi) - X(lo)}%"></i><i class="fill ${d >= lo ? "ok" : ""}" style="width:${X(d)}%"></i>${p ? `<i class="plan" style="left:${X(p)}%"></i>` : ""}</div><span class="num">${fmtN(d)}<small>/${fmtN(p)}</small></span></div>`; }).join("")}
-    <p class="note" style="padding:0">Ticked sets so far, out of what this week's plan adds up to (the white line). The green band is the range research supports. Helper muscles count as half a set, and your runs add quad work on top.</p></div></div>`;
 }
 // ================= Bodyweight =================
 const bwList = () => Object.entries(S.bw || {}).filter(([, v]) => num(v) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({ date, v: num(v) }));
@@ -829,7 +649,6 @@ function bwPanel() {
         <p class="note" style="padding:0">${ref === last ? "One weigh-in so far. The trend starts with the second." : `Since ${fmtDate(ref.date)}. For lean muscle gain, about ${S.unit === "lb" ? "+0.2 to +0.5 lb" : "+0.1 to +0.25 kg"} a week is the usual target. Training for a 5K, holding steady is fine too.`}</p>`; })();
   return `<div class="group"><div class="label">Bodyweight</div><div class="panel pad" style="display:grid;gap:12px">${body}${bwForm()}</div></div>`;
 }
-
 let runMetric = "speed";
 function runningPanel() {
   const runs = runLog(); if (!runs.length) return "";
@@ -846,29 +665,15 @@ function runningPanel() {
     <div class="telemetry" style="border-top:0"><div><span class="k">Last speed</span><span class="v">${(num(last.dist) / num(last.time) * 60).toFixed(1)}<small>km/h</small></span></div><div><span class="k">Longest</span><span class="v">${fmtN(Math.max(...runs.map(s => num(s.dist))))}<small>km</small></span></div><div><span class="k">5K est.</span><span class="v">${p ? fmtClock(p.t) : "–"}</span></div></div>
     <div class="seg" role="group" aria-label="Chart">${[["speed", "Speed"], ["pace", "Pace"], ["dist", "Distance"]].map(([k, l]) => `<button type="button" data-act="rmetric" data-m="${k}" aria-pressed="${k === m}">${l}</button>`).join("")}</div>
     ${lineChart(pts, { fmt, invert: m === "pace", label: `Run ${m === "dist" ? "distance" : m} over time` })}
-    <p class="note" style="padding:0">${trend}${m === "pace" ? "Higher on the chart is faster. " : ""}Walk-run sessions count the walking too, so your average speed climbs as the walk breaks shrink. That's exactly the progress you want before January.${p ? ` The 5K estimate scales your best run of the last 6 weeks (${fmtN(num(p.s.dist))} km on ${fmtDate(p.s.date)}).` : ""}</p></div></div>`;
-}
-// Strength on a session, relative to your usual for each lift (1.0 = typical day).
-function strengthIdx(s) {
-  const r = Object.values(s.ex || {}).map(e => { const b = Math.max(0, ...e.sets.map(x => e1rm(num(x.w), num(x.r)))); if (!b) return 0; const ser = series(e.v); return b / (ser.reduce((n, p) => n + p.v, 0) / ser.length); }).filter(Boolean);
-  return r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0;
-}
-function readinessPanel() {
-  const ls = Object.values(S.sessions).filter(s => readyScore(s.rd) && strengthIdx(s));
-  if (!ls.length) return "";
-  const hi = ls.filter(s => readyScore(s.rd) >= 3.5), lo = ls.filter(s => readyScore(s.rd) < 3.5);
-  const avg = a => a.reduce((n, s) => n + strengthIdx(s), 0) / a.length;
-  const body = hi.length >= 2 && lo.length >= 2
-    ? (() => { const d = (avg(hi) / avg(lo) - 1) * 100; return `On days you felt good (3.5+), your lifts were <b style="color:${d >= 0 ? "var(--good)" : "var(--red)"}">${Math.abs(d).toFixed(1)}% ${d >= 0 ? "stronger" : "weaker"}</b> than on rough days. Based on ${hi.length} good and ${lo.length} rough sessions.${d > 2 ? " Sleep is worth protecting." : ""}`; })()
-    : `${ls.length} workout${ls.length === 1 ? "" : "s"} rated so far. After a couple of good days and a couple of rough ones, this shows how much your sleep and recovery move your strength.`;
-  return `<div class="group"><div class="label">Readiness</div><div class="panel pad"><p class="note" style="padding:0">${body}</p></div></div>`;
+    <p class="note" style="padding:0">${trend}${m === "pace" ? "Higher on the chart is faster. " : ""}Walk-run sessions count the walking too, so your average speed climbs as the walk breaks shrink.${p ? ` The 5K estimate scales your best run of the last 6 weeks (${fmtN(num(p.s.dist))} km on ${fmtDate(p.s.date)}).` : ""}</p></div></div>`;
 }
 
 // ================= Routing =================
 let tab = "today";
 let open = null; // id of the session being shown full-screen
-let preview = null; // { day, date } when looking at a plan without logging it
+let preview = null; // { day, date, wk } when looking at a session without logging it
 let weekOff = 0; // 0 = this week, -1 = last week, ...
+let planWk = null; // week shown on the Plan tab
 let histEx = null;
 let histMore = 8;
 const pendingDel = new Set();
@@ -892,231 +697,250 @@ function ring(frac, big, cap, color) {
     <circle cx="46" cy="46" r="${r}" fill="none" stroke="${color || "url(#hg)"}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
     <div class="in"><div class="big">${big}</div><div class="cap">${cap}</div></div></div>`;
 }
-function weekSessions() {
-  const ws = iso(weekStart()), we = iso(new Date(weekStart().getTime() + 6 * 864e5));
-  return Object.values(S.sessions).filter(s => s.date >= ws && s.date <= we && (s.end || doneSets(s) > 0 || s.dist));
-}
-function todayView() {
-  const now = new Date(), di = dowIdx(now);
-  const active = S.active && S.sessions[S.active];
-  const plan = dayPlan(todayISO()), plannedId = plan.id;
-  const loggedToday = Object.values(S.sessions).find(s => s.date === todayISO() && s.day === plannedId);
-  const planned = plannedId && (plannedId === "runna" ? { ...RUNNA_DAY, name: plan.runs[0].title } : byId(plannedId));
-  const week = weekSessions();
-  const planCount = weekPlanCount();
-  const vol = week.reduce((n, s) => n + sessionVolume(s), 0);
-  let hero;
-  if (active) {
-    const d = byId(active.day), done = doneSets(active), tot = totalSets(d, active);
-    hero = heroCard(d, "In progress", `${done} of ${tot} sets done. Started ${new Date(active.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
-      ring(done / tot, Math.round(done / tot * 100) + "%", "done"),
-      [["Sets", done, "/" + tot], ["Volume", fmtK(sessionVolume(active)), S.unit], ["Time", Math.round((Date.now() - active.start) / 60000), "min"]],
-      `<button class="cta" type="button" data-act="resume">Resume workout</button>`);
-  } else if (planned) {
-    const isDone = loggedToday && (loggedToday.end || loggedToday.dist);
-    const tel = planned.id === "runna" ? [["Session", plan.runs.length, plan.runs.length > 1 ? "runs" : "run"], ["Plan", "Runna", ""], ["This week", week.length, "/" + planCount]]
-      : planned.run ? [["Session", "1", "run"], ["Pick", planned.opts.length, "options"], ["Effort", planned.id === "easy" ? "3–4" : "7–8", "RPE"]]
-      : [["Exercises", planned.ex.length, ""], ["Sets", totalSets(planned), ""], ["Time", "~" + estMin(planned), "min"]];
-    const btn = isDone ? `<button class="cta quiet" type="button" data-act="open" data-id="${loggedToday.id}">Done today · view log</button>`
-      : planned.id === "runna" ? `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="runna">Details</button><button class="cta" type="button" data-act="start" data-day="runna">Log run</button></div>${runnaLink(plan.runs[0].link)}`
-      : planned.run ? `<div class="btnrow"><button class="cta" type="button" data-act="start" data-day="${planned.id}">Log run</button><a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Run 5K app</a></div>`
-      : `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${planned.id}">Preview</button><button class="cta" type="button" data-act="start" data-day="${planned.id}">Start workout</button></div>`;
-    const sub = planned.id === "runna" ? plan.runs[0].desc.split("\n").find(Boolean) || planned.focus : planned.focus;
-    hero = heroCard(planned, isDone ? "Today · done" : plan.from ? "Carried over · today" : "Next · today", sub,
-      ring(week.length / planCount, `${week.length}/${planCount}`, "this week"), tel, btn);
-  } else {
-    hero = heroCard({ name: "Rest day", c: "--steel", glow: "rgba(154,167,180,.2)" }, "Today", "Recovery is when you grow. Walk, stretch, sleep well.",
-      ring(week.length / planCount, `${week.length}/${planCount}`, "this week"),
-      [["This week", week.length, "/" + planCount], ["Volume", fmtK(vol), S.unit], ["Next", nextPlanned(), ""]], "");
-  }
-  const ws = weekStart(), vs = new Date(ws.getTime() + weekOff * 7 * 864e5);
-  const strip = WD.map((w, i) => {
-    const date = new Date(vs.getTime() + i * 864e5), dISO = iso(date);
-    const logged = sessionsOn(dISO);
-    const p = dayPlan(dISO), id = logged[0]?.day || p.id, d = id && byId(id);
-    const t = d ? d.name.replace(" Run", "") + (p.both && !logged.length ? " + Run" : "") : "Rest";
-    return `<button type="button" class="wd ${dISO === todayISO() ? "today" : ""} ${logged.length ? "done" : ""}" data-act="day" data-date="${dISO}" data-day="${p.id}" style="--c:${d ? `var(${d.c})` : "transparent"};font:inherit;color:inherit"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${esc(t)}</span><span class="bar"></span></button>`;
-  }).join("");
-  const ve = iso(new Date(vs.getTime() + 6 * 864e5)), vsISO = iso(vs);
-  const weekLog = sessionsList().filter(s => s.date >= vsISO && s.date <= ve && isLogged(s));
-  const weekLabel = weekOff === 0 ? "This week" : weekOff === -1 ? "Last week" : weekOff === 1 ? "Next week" : "Week of " + vs.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  const others = () => ALL.filter(d => d.id !== plannedId).map(d =>
-    `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("");
-  return `<section class="view">
-    <div class="head"><div class="eyebrow">Week of ${ws.toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${week.length} of ${planCount} done</div>
-      <h1>${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h1></div>
-    ${hero}
-    ${active ? "" : rollCard(plan, loggedToday)}
-    ${coachCards()}
-    ${plan.both ? `<div class="group"><div class="label">Also today from Runna</div><div class="panel rows">${runnaRows(todayISO())}</div></div>` : ""}
-    <div class="group">
-      <div class="weeknav"><button type="button" class="navbtn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
-        <span class="label" style="flex:1">${weekLabel}${weekOff ? ` · <a href="#" data-act="wk" data-d="0" style="color:var(--amber);text-decoration:none">back to today</a>` : ""}</span>
-        <button type="button" class="navbtn" data-act="wk" data-d="1" aria-label="Next week">›</button></div>
-      <div class="week">${strip}</div>
-      <p class="note">Tap a day to see what you did, or what's planned.</p>
-      ${weekLog.length ? `<div class="panel rows">${weekLog.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)} · ${fmtDate(s.date)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div>` : weekOff < 0 ? `<div class="empty" style="padding:18px">Nothing logged that week.</div>` : ""}
-    </div>
-    <button class="cta quiet" type="button" data-act="others">Train something else</button>
-  </section>`;
-}
-// Shown when today's lift was carried over, or lifts are owed on a run or rest day.
-function rollCard(plan, loggedToday) {
-  if (!plan.from && !plan.behind || loggedToday?.end) return "";
-  const back = `<button class="sbtn" type="button" data-act="rollreset">Back to my calendar</button>`;
-  if (plan.from && isLift(plan.id)) {
-    const n = byId(plan.id).name;
-    return `<div class="alert mode"><b>Carried over</b><span>${esc(n)} was due ${esc(fmtDate(plan.from))} and hasn't been done, so it's today's workout and everything after it has moved along.</span>
-      <div class="mini"><button class="sbtn" type="button" data-act="rollskip" data-day="${plan.id}">Skip ${esc(n)}</button>${back}</div></div>`;
-  }
-  let next = "";
-  for (let k = 1; k <= 7 && !next; k++) { const d = addDays(todayISO(), k), p = dayPlan(d); if (isLift(p.id)) next = `${byId(p.id).name} on ${fmtDate(d)}`; }
-  return `<div class="alert mode"><b>Plan shifted</b><span>${plan.behind} lift${plan.behind === 1 ? "" : "s"} carried over.${next ? ` Next up: ${esc(next)}.` : ""}</span><div class="mini">${back}</div></div>`;
-}
-function othersSheet() {
-  const plan = dayPlan(todayISO()), plannedId = plan.id;
-  const skip = S.roll && !S.roll.off && isLift(plannedId) && !sessionsOn(todayISO()).some(s => s.day === plannedId)
-    ? `<button class="cta quiet" type="button" data-act="rollskip" data-day="${plannedId}">Skip ${esc(byId(plannedId).name)} and move on</button>` : "";
-  sheet(`<h3>Train something else</h3>${skip}<div class="panel rows">${ALL.filter(d => d.id !== plannedId).map(d =>
-    `<button class="row" type="button" data-act="preview" data-day="${d.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : d.ex.length + " ex"}</span><span class="chev">›</span></button>`).join("")}</div>
-    <p class="note" style="padding:0">Tap one to see the exercises first. Starting it logs it on today's date, and you can change the date inside.</p>
-    <button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
-}
 function heroCard(d, when, sub, ringHtml, tel, btn) {
   return `<div class="hero" style="--c:var(${d.c});--glow:${d.glow}">
     <div class="hero-top">${ringHtml}<div><div class="when">${esc(when)}</div><h2>${esc(d.name)}</h2><p class="sub">${esc(sub)}</p></div></div>
     <div class="telemetry">${tel.map(([k, v, u]) => `<div><span class="k">${k}</span><span class="v">${v}<small>${u}</small></span></div>`).join("")}</div>
     ${btn}</div>`;
 }
-const isLogged = s => !!(s.end || doneSets(s) > 0 || s.dist || (s.ex && Object.values(s.ex).some(e => e.sets.some(filled))));
-const sessionsOn = dISO => sessionsList().filter(s => s.date === dISO && isLogged(s));
+// Sessions logged this week, and what's still planned for the rest of it (lifts and Runna runs).
+function weekCount() {
+  const ws = iso(weekStart()), today = todayISO(), up = upcoming();
+  let done = 0, left = 0;
+  for (let i = 0; i < 7; i++) {
+    const dd = addDays(ws, i), logged = sessionsOn(dd);
+    done += logged.length;
+    if (dd < today) continue;
+    if (up[dd]) left++;
+    left += runnaOn(dd).filter(r => !r.done && !logged.some(s => s.day === "runna")).length;
+  }
+  return { done, plan: Math.max(1, done + left) };
+}
+function todayView() {
+  const now = new Date(), today = todayISO();
+  const active = S.active && S.sessions[S.active];
+  const up = upcoming(), next = up[today], runs = runnaOn(today);
+  const liftToday = sessionsOn(today).find(s => s.wk);
+  const wc = weekCount(), pos = nextPos(), total = seqLen();
+  const wkRing = ring(wc.done / wc.plan, `${wc.done}/${wc.plan}`, "this week");
+  let hero;
+  if (!hasProg() && !active) hero = importCard();
+  else if (active) {
+    const pl = planFor(active), done = doneSets(active), tot = totalSets(pl.ex);
+    hero = heroCard(pl.d, `In progress${active.wk ? " · week " + active.wk : ""}`, `${done} of ${tot} sets done. Started ${new Date(active.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+      ring(done / tot, Math.round(done / tot * 100) + "%", "done"),
+      [["Sets", done, "/" + tot], ["Volume", fmtK(sessionVolume(active)), S.unit], ["Time", Math.round((Date.now() - active.start) / 60000), "min"]],
+      `<button class="cta" type="button" data-act="resume">Resume workout</button>`);
+  } else if (liftToday) {
+    hero = heroCard(byId(liftToday.day), `Today · done · week ${liftToday.wk}`, summaryLine(liftToday), wkRing,
+      [["Program", `${Math.min(pos, total)}`, "/" + total], ["This week", wc.done, "/" + wc.plan], ["Next", nextLabel(), ""]],
+      `<button class="cta quiet" type="button" data-act="open" data-id="${liftToday.id}">View today's log</button>`);
+  } else if (next) {
+    const d = dayOf(next.d), ex = dayPlanEx(next.wk, next.d);
+    hero = heroCard(d, `Week ${next.wk} of ${WEEKS} · today`, `${d.focus}. ${waveNote(next.wk)}`, wkRing,
+      [["Exercises", ex.length, ""], ["Sets", totalSets(ex), ""], ["Time", "~" + estMin(ex), "min"]],
+      `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="${d.id}" data-wk="${next.wk}">Preview</button><button class="cta" type="button" data-act="start" data-day="${d.id}" data-wk="${next.wk}">Start workout</button></div>`);
+  } else if (runs.length) {
+    hero = heroCard({ ...RUNNA_DAY, name: runs[0].title }, sessionsOn(today).some(s => s.day === "runna") ? "Today · done" : "Today · Runna", runs[0].desc.split("\n").find(Boolean) || RUNNA_DAY.focus, wkRing,
+      [["Session", runs.length, runs.length > 1 ? "runs" : "run"], ["Plan", "Runna", ""], ["Next lift", nextLabel(), ""]],
+      `<div class="btnrow" style="grid-template-columns:1fr 2fr"><button class="cta quiet" type="button" data-act="preview" data-day="runna">Details</button><button class="cta" type="button" data-act="start" data-day="runna">Log run</button></div>${runnaLink(runs[0].link)}`);
+  } else if (pos >= total) {
+    hero = heroCard({ name: "Program done", c: "--amber", glow: "rgba(255,178,56,.3)" }, "All 9 weeks", "Retest or update your maxes in Setup, then run it again from Week 1 with heavier weights.", ring(1, "9/9", "weeks"),
+      [["Sessions", total, ""], ["This week", wc.done, "/" + wc.plan], ["Ran", fmtN(runLog().reduce((n, s) => n + num(s.dist), 0)), "km"]],
+      `<button class="cta" type="button" data-act="restart">Start again at Week 1</button>`);
+  } else {
+    const n = atPos(pos);
+    hero = heroCard({ name: "Rest day", c: "--steel", glow: "rgba(154,167,180,.2)" }, "Today", "Recovery is when you grow. Walk, stretch, sleep well.", wkRing,
+      [["This week", wc.done, "/" + wc.plan], ["Program", `${pos}`, "/" + total], ["Next", nextLabel(), ""]],
+      `<button class="cta quiet" type="button" data-act="preview" data-day="${dayOf(n.d).id}" data-wk="${n.wk}">Train anyway: ${esc(dayOf(n.d).name)}</button>`);
+  }
+  const ws = weekStart(), vs = new Date(ws.getTime() + weekOff * 7 * 864e5);
+  const strip = WD.map((w, i) => {
+    const date = new Date(vs.getTime() + i * 864e5), dISO = iso(date);
+    const logged = sessionsOn(dISO), p = dISO >= today && !logged.some(s => s.wk) ? up[dISO] : null, rn = runnaOn(dISO);
+    const first = logged.find(s => !byId(s.day).run) || logged[0];
+    const d = first ? byId(first.day) : p ? dayOf(p.d) : rn.length ? RUNNA_DAY : null;
+    const t = first ? byId(first.day).name.replace(" Run", "") : p ? dayOf(p.d).name + (rn.length ? " + Run" : "") : rn.length ? "Run" : "Rest";
+    return `<button type="button" class="wd ${dISO === today ? "today" : ""} ${logged.length ? "done" : ""}" data-act="day" data-date="${dISO}" style="--c:${d ? `var(${d.c})` : "transparent"};font:inherit;color:inherit"><span class="d">${w}</span><span class="n">${date.getDate()}</span><span class="t">${esc(t)}</span><span class="bar"></span></button>`;
+  }).join("");
+  const ve = iso(new Date(vs.getTime() + 6 * 864e5)), vsISO = iso(vs);
+  const weekLog = sessionsList().filter(s => s.date >= vsISO && s.date <= ve && isLogged(s));
+  const weekLabel = weekOff === 0 ? "This week" : weekOff === -1 ? "Last week" : weekOff === 1 ? "Next week" : "Week of " + vs.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const skip = !active && !liftToday && next ? `<p class="note">Can't do ${esc(dayOf(next.d).name)} today? Leave it and it moves to your next lift day. <a href="#" data-act="skip" style="color:var(--amber)">Skip it instead</a></p>` : "";
+  return `<section class="view">
+    <div class="head"><div class="eyebrow">${hasProg() ? `Upper/Lower · week ${Math.min(WEEKS, atPos(Math.min(pos, total - 1)).wk)} of ${WEEKS} · wave ${WAVE(Math.min(WEEKS, atPos(Math.min(pos, total - 1)).wk))}` : "Gym Log"}</div>
+      <h1>${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h1></div>
+    ${hero}
+    ${skip}
+    ${coachCards()}
+    ${next && runs.length && !active ? `<div class="group"><div class="label">Also today from Runna</div><div class="panel rows">${runnaRows(today)}</div></div>` : ""}
+    <div class="group">
+      <div class="weeknav"><button type="button" class="navbtn" data-act="wk" data-d="-1" aria-label="Previous week">‹</button>
+        <span class="label" style="flex:1">${weekLabel}${weekOff ? ` · <a href="#" data-act="wk" data-d="0" style="color:var(--amber);text-decoration:none">back to today</a>` : ""}</span>
+        <button type="button" class="navbtn" data-act="wk" data-d="1" aria-label="Next week">›</button></div>
+      <div class="week">${strip}</div>
+      <p class="note">Tap a day to see what you did, or what's coming up.</p>
+      ${weekLog.length ? `<div class="panel rows">${weekLog.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(s.day === "runna" ? s.variant || d.name : sessName(s))} · ${fmtDate(s.date)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div>` : weekOff < 0 ? `<div class="empty" style="padding:18px">Nothing logged that week.</div>` : ""}
+    </div>
+    <button class="cta quiet" type="button" data-act="others">Train something else</button>
+  </section>`;
+}
+function othersSheet() {
+  const n = atPos(Math.min(nextPos(), seqLen() - 1));
+  sheet(`<h3>Train something else</h3><p class="note" style="padding:0">${hasProg() ? `Week ${n.wk}. Tap one to see it first. Any other week is on the Plan tab.` : "Import your program file in Setup to see the lifting days here."}</p>
+    <div class="panel rows">${(hasProg() ? order() : []).map(d => { const dd = dayOf(d), ex = dayPlanEx(n.wk, d);
+      return `<button class="row" type="button" data-act="preview" data-day="${dd.id}" data-wk="${n.wk}" style="--c:var(${dd.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(dd.name)}</span><span class="t2">${esc(dd.focus)}</span></span><span class="end">${ex.length} ex</span><span class="chev">›</span></button>`; }).join("")}
+      <button class="row" type="button" data-act="start" data-day="runna" style="--c:var(--steel)"><span class="stripe"></span><span class="main"><span class="t1">Log a run</span><span class="t2">Anything outside your Runna plan</span></span><span class="end">run</span><span class="chev">›</span></button></div>
+    <button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
+}
 function summaryLine(s) {
   if (byId(s.day).run) return [s.variant, s.dist && s.dist + " km", s.time && s.time + " min"].filter(Boolean).join(" · ");
   const ex = Object.values(s.ex || {}).filter(e => e.sets.some(filled)).length;
   const n = doneSets(s);
   return `${n} set${n === 1 ? "" : "s"} · ${ex} exercise${ex === 1 ? "" : "s"} · ${fmtK(sessionVolume(s))} ${s.unit || S.unit}${s.end ? "" : " · not finished"}`;
 }
-function nextPlanned() { for (let k = 1; k <= 7; k++) { const p = dayPlan(iso(new Date(Date.now() + k * 864e5))); if (p.id) return p.id === "runna" ? "Run" : byId(p.id).name.replace(" Run", ""); } return "–"; }
-// Lift days from the schedule plus the runs planned this week (Runna's if synced).
-function weekPlanCount() {
-  const ws = weekStart();
-  let n = 0;
-  for (let i = 0; i < 7; i++) { const p = dayPlan(iso(new Date(ws.getTime() + i * 864e5))); n += (p.id ? 1 : 0) + (p.both ? 1 : 0); }
-  return n || 1;
-}
-const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 
 // ================= Workout =================
-function startSession(dayId, date) {
+function startSession(dayId, date, wk) {
   const d = byId(dayId);
   date = date && date <= todayISO() ? date : todayISO();
+  wk = +wk || 0;
   preview = null;
-  const existing = Object.values(S.sessions).find(s => s.date === date && s.day === dayId);
+  const existing = Object.values(S.sessions).find(s => s.date === date && s.day === dayId && (d.run || (s.wk || 0) === wk));
   if (existing) { if (!d.run && !existing.end) S.active = existing.id; save(); open = existing.id; return render(), window.scrollTo(0, 0); }
   const id = "s" + Date.now().toString(36);
   const rn = dayId === "runna" && runnaOn(date)[0];
   S.sessions[id] = rn ? { id, day: dayId, date, start: Date.now(), variant: rn.title, plan: rn.desc, link: rn.link }
-    : dayId === "runna" ? { id, day: dayId, date, start: Date.now(), variant: "Runna run" }
-    : d.run ? { id, day: dayId, date, start: Date.now(), variant: S.swaps[dayId] || d.opts[0][0] }
-    : { id, day: dayId, date, start: Date.now(), unit: S.unit, ex: {}, mode: modeFor(dayId, date) };
+    : d.run ? { id, day: dayId, date, start: Date.now(), variant: "Run" }
+    : { id, day: dayId, wk, date, start: Date.now(), unit: S.unit, ex: {} };
   if (!d.run) S.active = id;
   save(); open = id; render(); window.scrollTo(0, 0);
 }
+const WARMUP = [["Low-intensity cardio", "5–10 min", "Any machine, heart rate 100–135"], ["Foam roll", "2–3 min", "Quads, lats, calves. Lacrosse ball for pecs, delts, hamstrings"],
+  ["Front/back leg swing", "2 × 12", "Each leg"], ["Side/side leg swing", "2 × 12", "Each leg"], ["Standing glute squeeze", "2 × 15 s", "Squeeze as hard as you can"],
+  ["Prone trap raise", "2 × 15", "Feel the mid back"], ["Cable external rotation", "2 × 15", "Each side"], ["Cable internal rotation", "2 × 15", "Each side"], ["Overhead shrug", "2 × 15", "Light squeeze on the traps at the top"]];
+const warmupTable = () => `<div class="rows">${WARMUP.map(([n, r, t]) => `<div class="row" style="padding:9px 0"><span class="main"><span class="t1">${n}</span><span class="t2">${t}</span></span><span class="end">${r}</span></div>`).join("")}</div>`;
 function workoutView(s) {
-  const d = byId(s.day), done = doneSets(s), tot = totalSets(d, s);
+  const pl = planFor(s), d = pl.d, done = doneSets(s), tot = totalSets(pl.ex);
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
       <div class="wotop"><button class="back" type="button" data-act="close">‹ ${s.end ? "Back" : "Today"}</button><span class="clock" id="clock"></span></div>
-      <div class="wotitle"><h1 style="color:var(${d.c})">${esc(d.name)}</h1><span class="num" style="color:var(--muted);font-size:13px" id="wo-count">${done}/${tot} sets</span></div>
+      <div class="wotitle"><h1 style="color:var(${d.c})">${esc(d.name)}</h1><span class="num" style="color:var(--muted);font-size:13px" id="wo-count">${s.wk ? `Wk ${s.wk} · ` : ""}${done}/${tot} sets</span></div>
       <div class="prog"><i id="wo-prog" style="width:${Math.min(100, done / tot * 100)}%"></i></div></div></div>
     <section class="view" style="margin-top:14px">
       <div class="dateline"><label for="wo-date">Date</label><input type="date" id="wo-date" value="${s.date}"><span>· weights in ${esc(s.unit || S.unit)}</span></div>
-      ${s.end ? "" : coachPanel(s, d)}
+      ${!s.end && s.wk ? sessionNotes(s) : ""}
       ${s.end ? `<div class="panel pad"><div class="telemetry" style="border:0"><div><span class="k">Sets</span><span class="v">${done}<small>/${tot}</small></span></div><div><span class="k">Volume</span><span class="v">${fmtK(sessionVolume(s))}<small>${esc(s.unit || S.unit)}</small></span></div><div><span class="k">Time</span><span class="v">${(s.end - s.start) / 60000 > 240 ? "–" : Math.max(1, Math.round((s.end - s.start) / 60000))}<small>min</small></span></div></div><p class="note" style="padding:0;margin-top:8px">Finished workout. You can still fix any numbers below.</p></div>` : ""}
-      ${d.ex.map((ex, i) => exCard(s, d, ex, i)).join("")}
+      ${pl.legacy ? `<p class="note">From your old Push/Pull/Legs plan.</p>` : ""}
+      ${pl.ex.map((ex, i) => exCard(s, pl, ex, i)).join("")}
       <div class="panel pad field"><label for="wo-note">Notes</label><textarea id="wo-note" placeholder="Sleep, energy, anything that felt off">${esc(s.note)}</textarea></div>
       ${s.end ? `<button class="cta quiet" type="button" data-act="close">Close</button>` : `<button class="cta" type="button" data-act="finish">Finish workout</button>`}
     </section>`;
 }
-function exCard(s, d, ex, i) {
+// Warm-up and run clash, shown above the exercises.
+function sessionNotes(s) {
+  const out = [], cl = s.day[0] === "l" && clash(s.date);
+  if (cl) out.push(`<div class="alert ${cl.hard ? "hard" : ""}"><b>${cl.hard ? "Run clash" : "Heads up"}</b><span>${esc(cl.text)}</span></div>`);
+  if (s.wk % 3 === 1) out.push(`<div class="alert mode"><b>Mini-deload week</b><span>${esc(waveNote(s.wk))} Weights may feel light. That's on purpose.</span></div>`);
+  out.push(`<details class="panel pad cue"><summary>Warm-up first (about 10 min)</summary>${warmupTable()}<p class="note" style="padding:0">Then pyramid up to the first big lift with 3–4 lighter sets. The app shows the weights on each % lift.</p></details>`);
+  return out.join("");
+}
+function exCard(s, pl, ex, i) {
   const e = s.ex[ex.id];
-  const v = e?.v || variantOf(ex);
-  const n = setsFor(ex, s);
+  const v = e?.v || (pl.legacy ? ex.name : variantOf(ex));
+  const n = ex.sets;
   const sets = Array.from({ length: Math.max(n, e?.sets?.length || 0) }, (_, k) => e?.sets?.[k] || {});
-  const last = lastFor(d.id, ex, s.id, v);
+  const last = lastFor(ex.id, s.id, v);
   const lastSets = last ? last.sets.filter(filled) : [];
-  const nd = s.end ? null : nudge(ex, last, s), stall = !s.end && stalled(v);
+  const tw = v === ex.name ? targetW(ex) : 0, wpNone = ex.wp && v === ex.name;
   const complete = sets.every(x => x.done);
-  return `<article class="panel ex ${complete ? "complete" : ""}" style="--c:var(${d.c})" data-ex="${ex.id}">
-    <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(d.ex.length).padStart(2, "0")}${v !== ex.name ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
-      <button class="swap" type="button" data-act="swap" data-ex="${ex.id}">${ICON.swap}Swap</button></div>
-    ${IMG[v] ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${ex.id}" aria-label="Show how to do ${esc(v)}"><img src="${img(v, 0)}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>`
-      : `<a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
-    <div class="chips"><span class="chip"><b>${n}</b> × <b>${ex.lo}–${ex.hi}</b></span><span class="chip">RPE <b>${rpeFor(ex, s)}</b></span><span class="chip">Rest <b>${fmtRest(ex.rest)}</b></span>${stall ? `<button class="chip warn" type="button" data-act="stall" data-name="${esc(v)}" data-ex="${ex.id}">Stalled 3 wks ›</button>` : ""}</div>
-    ${nd ? `<div class="nudge ${nd.kind}">${esc(nd.text)}<span>${nd.kind === "hold" ? "Lighter session today" : nd.kind === "up" ? "You hit the top of the range last time" : nd.kind === "down" ? "Last time fell short of the range" : `Aim for ${nd.rs.join(" · ")} reps`}</span></div>` : ""}
-    <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join("  ")}</b>` : "First time with this exercise. Pick a weight you could lift for a few more reps than the target."}</div>
+  const repTxt = /^\d+$/.test(ex.reps) ? ex.reps : "";
+  const photo = img(v, 0);
+  return `<article class="panel ex ${complete ? "complete" : ""}" style="--c:var(${pl.d.c})" data-ex="${ex.id}">
+    <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(pl.ex.length).padStart(2, "0")}${ex.ss ? ` · superset ${ex.ss}` : ""}${v !== ex.name && !ex.wp ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
+      ${pl.legacy ? "" : `<button class="swap" type="button" data-act="swap" data-ex="${ex.id}" data-day="${pl.d.id}">${ICON.swap}${wpNone ? "Pick" : "Swap"}</button>`}</div>
+    ${wpNone ? `<button class="cta quiet" type="button" data-act="swap" data-ex="${ex.id}" data-day="${pl.d.id}" style="font-size:16px">Pick your ${ex.wp} body weak point exercise</button><p class="note" style="padding:0">The program has you choose 2–3 lagging body parts and stick with them. Your pick is remembered for every ${ex.wp} day.</p>` : ""}
+    ${photo ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${ex.id}" data-day="${pl.d.id}" aria-label="Show how to do ${esc(v)}"><img src="${photo}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>`
+      : wpNone ? "" : `<a class="watch" href="${videoFor(ex, v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
+    ${pl.legacy ? "" : `<div class="chips"><span class="chip"><b>${esc(ex.setsTxt.replace("-", "–"))}</b> × <b>${esc(ex.reps.replace("-", "–"))}</b></span>${loadChip(ex, s)}<span class="chip">Rest <b>${fmtRest(ex.rest)}</b></span></div>`}
+    ${ex.note ? `<p class="note" style="padding:0;color:var(--ink)">${esc(ex.note)}</p>` : ""}
+    ${ex.pct && !maxFor(ex.id) && !s.end ? maxField(ex) : ""}
+    ${tw && !s.end && warmup(ex) ? `<div class="prev">Warm-up: <b>${esc(warmup(ex))}</b></div>` : ""}
+    <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join("  ")}</b>${last.s.ex[ex.id]?.ls ? ` · last set RPE ${esc(last.s.ex[ex.id].ls)}` : ""}` : ex.pct ? "Weight comes from your one-rep max." : "First time with this one. Pick a weight that lands on the target RPE."}</div>
     <div class="sets">
       <div class="sethead"><span></span><span style="text-align:center">${esc(s.unit || S.unit)}</span><span style="text-align:center">reps</span><span></span></div>
-      ${sets.map((x, k) => { const p = last?.sets?.[k], tw = nd?.w ? fmtW(nd.w) : p?.w, tr = nd?.rs?.[k] ?? p?.r;
+      ${sets.map((x, k) => { const p = last?.sets?.[k], pw = tw ? fmtW(tw) : p?.w, pr = repTxt || p?.r || ex.reps;
         return `<div class="setrow ${x.done ? "on" : ""}"><span class="setno">${k + 1}</span>
-          <input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(tw || "–")}" aria-label="Set ${k + 1} weight">
-          <input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(tr || ex.lo + "–" + ex.hi)}" aria-label="Set ${k + 1} reps">
+          <input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} weight">
+          <input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps">
           <button class="tick" type="button" data-act="tick" data-ex="${ex.id}" data-k="${k}" aria-pressed="${!!x.done}" aria-label="Set ${k + 1} done">${ICON.tick}</button></div>`; }).join("")}
     </div>
-    <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Set</button>${sets.length > n ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">− Set</button>` : ""}</div>
-    <details class="cue"><summary>How to do it</summary><p>${esc(ex.cue)}</p><p><a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch a video</a></p></details>
+    <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Set</button>${sets.length > n ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">− Set</button>` : ""}
+      ${pl.legacy ? "" : `<label class="lsrpe">Last-set RPE<input inputmode="decimal" data-ls="${ex.id}" value="${esc(e?.ls)}" placeholder="${esc(ex.load && !ex.pct ? ex.load : "–")}" aria-label="RPE of your last set"></label>`}</div>
   </article>`;
+}
+function maxField(ex) {
+  const base = MAXOF[ex.id] || ex.id, est = estMax(base);
+  return `<div class="alert"><b>Your ${esc(EX[base][0])} one-rep max</b><span>This lift is ${esc(ex.load)} of it. Enter it once and every week's weight is worked out for you.</span>
+    <div class="bwform"><input id="max-${ex.id}" inputmode="decimal" data-max="${base}" placeholder="${est || "1RM"}" aria-label="One-rep max"><span>${esc(S.unit)}</span><button class="sbtn" type="button" data-act="maxsave" data-ex="${ex.id}" data-id="${base}">Save</button></div>
+    ${est ? `<span class="note" style="padding:0">${est} ${esc(S.unit)} is estimated from your recent sets. Not sure? See Setup for the program's AMRAP test.</span>` : `<span class="note" style="padding:0">Not sure? Setup has the program's AMRAP test.</span>`}</div>`;
 }
 function previewView(pv) {
   const d = byId(pv.day), isToday = pv.date === todayISO(), past = pv.date < todayISO();
   const when = isToday ? "Today" : fmtDate(pv.date);
-  const startLabel = d.run ? (past ? "Log this run" : "Log run") : past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
-  const rn = d.id === "runna" ? runnaOn(pv.date) : [];
-  const body = d.id === "runna"
-    ? (rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}${r.date !== pv.date ? `<p class="note" style="padding:0">Moved here from ${fmtDate(r.date)}.${S.runnaSwaps?.[r.id] ? ` ${esc(byId(S.runnaSwaps[r.id].lift).name)} moved to ${fmtDate(S.runnaSwaps[r.id].dest)}.` : ""}</p>` : ""}</div>${runnaMoveBtn(r, pv.date)}${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`)
-    : d.run
-    ? `<div class="group"><div class="label">Pick one</div><div class="panel rows">${d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")}</div></div>`
-    : d.ex.map((ex, i) => { const v = variantOf(ex), last = lastFor(d.id, ex, null);
-        return `<article class="panel ex" style="--c:var(${d.c})">
-          <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(d.ex.length).padStart(2, "0")}${v !== ex.name ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
-            <button class="swap" type="button" data-act="swap" data-day="${d.id}" data-ex="${ex.id}">${ICON.swap}Swap</button></div>
-          ${IMG[v] ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${ex.id}" aria-label="Show how to do ${esc(v)}"><img src="${img(v, 0)}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>` : `<a class="watch" href="${yt(v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
-          <div class="chips"><span class="chip"><b>${ex.sets}</b> × <b>${ex.lo}–${ex.hi}</b></span><span class="chip">RPE <b>${ex.rpe}</b></span><span class="chip">Rest <b>${fmtRest(ex.rest)}</b></span></div>
-          <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${last.sets.filter(filled).map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join("  ")}</b>` : "No log yet for this one."}</div>
-          <p class="note" style="padding:0">${esc(ex.cue)}</p></article>`; }).join("");
+  if (d.id === "runna") {
+    const rn = runnaOn(pv.date);
+    const body = rn.length ? rn.map(r => `<div class="panel pad prose"><h3 class="exname">${esc(r.title)}</h3>${r.done ? `<p><b>Done in Runna${r.dist ? ` · ${esc(r.dist)} km` : ""}${r.time ? ` · ${esc(r.time)} min` : ""}</b></p>` : ""}${r.desc ? `<p style="white-space:pre-line">${esc(r.desc)}</p>` : ""}${r.date !== pv.date ? `<p class="note" style="padding:0">Moved here from ${fmtDate(r.date)}.</p>` : ""}</div>${runnaMoveBtn(r, pv.date)}${runnaLink(r.link)}`).join("") : `<div class="empty">No Runna session on this day.</div>`;
+    return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
+        <div class="wotop"><button class="back" type="button" data-act="unpreview">‹ Back</button><span class="clock">Preview · ${esc(when)}</span></div>
+        <div class="wotitle"><h1 style="color:var(--ink)">Runna</h1><span class="num" style="color:var(--muted);font-size:13px">run</span></div></div></div>
+      <section class="view" style="margin-top:14px">${body}
+        ${(!past && !isToday) || rn.some(r => r.done) ? "" : `<button class="cta" type="button" data-act="start" data-day="runna" data-date="${pv.date}">${past ? "Log this run" : "Log run"}</button>`}</section>`;
+  }
+  const wk = +pv.wk, ex = dayPlanEx(wk, d.d);
+  const startLabel = past ? "Log this workout" : isToday ? "Start workout" : "Start it today instead";
+  const body = ex.map((x, i) => { const v = variantOf(x), last = lastFor(x.id, null, v), tw = v === x.name ? targetW(x) : 0;
+    return `<article class="panel ex" style="--c:var(${d.c})">
+      <div class="exhead"><div style="min-width:0"><div class="exidx">${String(i + 1).padStart(2, "0")} / ${String(ex.length).padStart(2, "0")}${x.ss ? ` · superset ${x.ss}` : ""}${v !== x.name && !x.wp ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>
+        <button class="swap" type="button" data-act="swap" data-day="${d.id}" data-ex="${x.id}">${ICON.swap}${x.wp && v === x.name ? "Pick" : "Swap"}</button></div>
+      ${img(v, 0) ? `<button class="demo" type="button" data-act="demo" data-name="${esc(v)}" data-ex="${x.id}" data-day="${d.id}" aria-label="Show how to do ${esc(v)}"><img src="${img(v, 0)}" alt="" loading="lazy"><img src="${img(v, 1)}" alt="" loading="lazy"><span class="tag">Start ⇄ finish · tap for tips</span></button>` : x.wp && v === x.name ? "" : `<a class="watch" href="${videoFor(x, v)}" target="_blank" rel="noopener">▶ Watch how it's done</a>`}
+      <div class="chips"><span class="chip"><b>${esc(x.setsTxt.replace("-", "–"))}</b> × <b>${esc(x.reps.replace("-", "–"))}</b></span>${loadChip(x)}<span class="chip">Rest <b>${fmtRest(x.rest)}</b></span></div>
+      ${x.note ? `<p class="note" style="padding:0">${esc(x.note)}</p>` : ""}
+      <div class="prev">${last ? `Last time · ${fmtDate(last.s.date)}: <b>${last.sets.filter(filled).map(y => `${esc(y.w || "–")}×${esc(y.r || "–")}`).join("  ")}</b>` : x.pct && !tw ? "Add your one-rep max to see the weight." : "No log yet for this one."}</div></article>`; }).join("");
+  const cur = atPos(Math.min(nextPos(), seqLen() - 1)), isNext = cur.wk === wk && cur.d === d.d;
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
       <div class="wotop"><button class="back" type="button" data-act="unpreview">‹ Back</button><span class="clock">Preview · ${esc(when)}</span></div>
-      <div class="wotitle"><h1 style="color:var(${d.c})">${esc(d.name)}</h1><span class="num" style="color:var(--muted);font-size:13px">${d.run ? "run" : `${d.ex.length} ex · ${totalSets(d)} sets · ~${estMin(d)} min`}</span></div></div></div>
+      <div class="wotitle"><h1 style="color:var(${d.c})">${esc(d.name)}</h1><span class="num" style="color:var(--muted);font-size:13px">Wk ${wk} · ${ex.length} ex · ${totalSets(ex)} sets · ~${estMin(ex)} min</span></div></div></div>
     <section class="view" style="margin-top:14px">
-      <p class="note">${esc(d.focus)}. Nothing is logged until you tap the button below.</p>
+      <p class="note">${esc(d.focus)}. ${esc(waveNote(wk))} Nothing is logged until you tap the button below.</p>
       ${body}
-      ${d.id === "runna" && (!past && !isToday || rn.some(r => r.done)) ? "" : `<button class="cta" type="button" data-act="start" data-day="${d.id}" data-date="${pv.date}">${startLabel}</button>`}
-      ${d.run && d.id !== "runna" ? `<a class="cta quiet" href="${RUN5K}" target="_blank" rel="noopener">Open Run 5K</a>` : ""}
+      <button class="cta" type="button" data-act="start" data-day="${d.id}" data-wk="${wk}" data-date="${pv.date}">${startLabel}</button>
+      ${isNext ? "" : `<button class="cta quiet" type="button" data-act="cursor" data-wk="${wk}" data-d="${d.d}">Make this my next workout</button>`}
     </section>`;
 }
-function openDay(dISO, plannedId) {
+function openDay(dISO) {
   const logged = sessionsOn(dISO);
   if (logged.length === 1) { open = logged[0].id; preview = null; render(); return window.scrollTo(0, 0); }
-  if (logged.length > 1) return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows">${logged.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
-  if (!plannedId) return toast(dISO < todayISO() ? "Rest day. Nothing logged." : "Rest day planned.");
-  if (dayPlan(dISO).both) { const d = byId(plannedId); return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows"><button class="row" type="button" data-act="preview" data-day="${d.id}" data-date="${dISO}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="chev">›</span></button>${runnaRows(dISO)}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`); }
-  preview = { day: plannedId, date: dISO }; render(); window.scrollTo(0, 0);
+  if (logged.length > 1) return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows">${logged.map(s => { const d = byId(s.day); return `<button class="row" type="button" data-act="open" data-id="${s.id}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(s.day === "runna" ? s.variant || d.name : sessName(s))}</span><span class="t2">${esc(summaryLine(s))}</span></span><span class="chev">›</span></button>`; }).join("")}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
+  const p = dISO >= todayISO() ? upcoming()[dISO] : null, rn = runnaOn(dISO);
+  if (!p && !rn.length) return toast(dISO < todayISO() ? "Nothing logged that day." : "Rest day planned.");
+  if (p && rn.length) { const d = dayOf(p.d); return sheet(`<h3>${fmtDate(dISO)}</h3><div class="panel rows"><button class="row" type="button" data-act="preview" data-day="${d.id}" data-wk="${p.wk}" data-date="${dISO}" style="--c:var(${d.c})"><span class="stripe"></span><span class="main"><span class="t1">${esc(d.name)} · Wk ${p.wk}</span><span class="t2">${esc(d.focus)}</span></span><span class="chev">›</span></button>${runnaRows(dISO)}</div><button class="cta quiet" type="button" data-act="closesheet">Close</button>`); }
+  preview = p ? { day: dayOf(p.d).id, wk: p.wk, date: dISO } : { day: "runna", date: dISO }; render(); window.scrollTo(0, 0);
 }
 function exEntry(s, exId) {
-  const ex = byId(s.day).ex.find(e => e.id === exId);
+  const ex = planFor(s).ex.find(e => e.id === exId);
   const e = s.ex[exId] || (s.ex[exId] = { v: variantOf(ex), sets: [] });
-  while (e.sets.length < setsFor(ex, s)) e.sets.push({});
+  while (e.sets.length < ex.sets) e.sets.push({});
   return e;
 }
 function refreshProgress(s) {
-  const d = byId(s.day), done = doneSets(s), tot = totalSets(d, s);
+  const done = doneSets(s), tot = totalSets(planFor(s).ex);
   const c = document.getElementById("wo-count"), p = document.getElementById("wo-prog");
-  if (c) c.textContent = `${done}/${tot} sets`; if (p) p.style.width = Math.min(100, done / tot * 100) + "%";
+  if (c) c.textContent = `${s.wk ? `Wk ${s.wk} · ` : ""}${done}/${tot} sets`; if (p) p.style.width = Math.min(100, done / tot * 100) + "%";
 }
 function finish(s) {
-  s.end = Date.now(); if (S.active === s.id) S.active = null; stopRest(); save(true);
-  const d = byId(s.day);
-  const prs = [];
-  for (const ex of d.ex) {
+  s.end = Date.now(); if (S.active === s.id) S.active = null; stopRest(); if (S.prog.cursor && s.wk) S.prog.cursor = null; save(true);
+  const pl = planFor(s), prs = [];
+  for (const ex of pl.ex) {
     const e = s.ex[ex.id]; if (!e) continue;
     const best = Math.max(0, ...e.sets.map(x => e1rm(num(x.w), num(x.r))));
     if (!best) continue;
@@ -1125,9 +949,12 @@ function finish(s) {
     if (had && best > prev) prs.push(e.v);
   }
   const mins = Math.max(1, Math.round((s.end - s.start) / 60000));
-  sheet(`<h3>${esc(d.name)} done</h3>
-    <div class="telemetry"><div><span class="k">Sets</span><span class="v">${doneSets(s)}<small>/${totalSets(d, s)}</small></span></div><div><span class="k">Volume</span><span class="v">${fmtK(sessionVolume(s))}<small>${esc(s.unit)}</small></span></div><div><span class="k">Time</span><span class="v">${mins > 240 ? "–" : mins}<small>min</small></span></div></div>
-    ${prs.length ? `<p class="note"><span class="pr">New best:</span> ${prs.map(esc).join(", ")}. Measured as estimated one-rep max, so more reps at the same weight counts too.</p>` : `<p class="note">Saved. Next time each exercise shows today's numbers as your target to beat.</p>`}
+  memo = {};
+  const nx = Object.entries(upcoming())[0];
+  sheet(`<h3>${esc(pl.d.name)} done</h3>
+    <div class="telemetry"><div><span class="k">Sets</span><span class="v">${doneSets(s)}<small>/${totalSets(pl.ex)}</small></span></div><div><span class="k">Volume</span><span class="v">${fmtK(sessionVolume(s))}<small>${esc(s.unit)}</small></span></div><div><span class="k">Time</span><span class="v">${mins > 240 ? "–" : mins}<small>min</small></span></div></div>
+    ${prs.length ? `<p class="note"><span class="pr">New best:</span> ${prs.map(esc).join(", ")}. Measured as estimated one-rep max, so more reps at the same weight counts too.</p>` : `<p class="note">Saved. Next time each exercise shows today's numbers to beat.</p>`}
+    ${nx ? `<p class="note">Next up: <b style="color:var(--ink)">Week ${nx[1].wk} · ${esc(dayOf(nx[1].d).name)}</b> on ${fmtDate(nx[0])}.</p>` : s.wk ? `<p class="note">That was the last session of the program. Well done.</p>` : ""}
     <button class="cta" type="button" data-act="closesheet-home">Done</button>`);
 }
 
@@ -1135,25 +962,23 @@ function finish(s) {
 function runView(s) {
   const d = byId(s.day);
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
-      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button>${d.id === "runna" ? (s.link ? `<a class="clock" href="${esc(s.link)}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open in Runna ↗</a>` : "") : `<a class="clock" href="${RUN5K}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open Run 5K ↗</a>`}</div>
-      <div class="wotitle"><h1 style="color:var(--ink)">${esc(d.id === "runna" ? s.variant : d.name)}</h1></div></div></div>
+      <div class="wotop"><button class="back" type="button" data-act="close">‹ Back</button>${s.link ? `<a class="clock" href="${esc(s.link)}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Open in Runna ↗</a>` : ""}</div>
+      <div class="wotitle"><h1 style="color:var(--ink)">${esc(s.variant || d.name)}</h1></div></div></div>
     <section class="view" style="margin-top:14px">
       <div class="dateline"><label for="wo-date">Date</label><input type="date" id="wo-date" value="${s.date}"></div>
-      ${d.id === "runna" ? (s.plan ? `<div class="group"><div class="label">Runna session</div><div class="panel pad prose"><p style="white-space:pre-line">${esc(s.plan)}</p></div></div>` : "")
-      : `<div class="group"><div class="label">Pick the session</div><div class="opts">${d.opts.map(([n, desc]) =>
-        `<button class="opt" type="button" data-act="runopt" data-name="${esc(n)}" aria-pressed="${n === s.variant}" style="display:grid;gap:3px"><b style="font-family:var(--display);font-size:20px;text-transform:uppercase">${esc(n)}</b><span style="font-size:13px;color:var(--muted)">${esc(desc)}</span></button>`).join("")}</div></div>`}
+      ${s.plan ? `<div class="group"><div class="label">Runna session</div><div class="panel pad prose"><p style="white-space:pre-line">${esc(s.plan)}</p></div></div>` : ""}
       <div class="panel pad" style="display:grid;gap:12px">
         <div class="grid2">
           <div class="field"><label for="run-dist">Distance km</label><input id="run-dist" inputmode="decimal" data-run="dist" value="${esc(s.dist)}" placeholder="5.0"></div>
           <div class="field"><label for="run-time">Time min</label><input id="run-time" inputmode="decimal" data-run="time" value="${esc(s.time)}" placeholder="30"></div>
           <div class="field"><label for="run-hr">Avg HR</label><input id="run-hr" inputmode="numeric" data-run="hr" value="${esc(s.hr)}" placeholder="optional"></div>
-          <div class="field"><label for="run-rpe">Effort 1–10</label><input id="run-rpe" inputmode="numeric" data-run="rpe" value="${esc(s.rpe)}" placeholder="${d.id === "easy" ? "3–4" : d.id === "runna" ? "1–10" : "7–8"}"></div>
+          <div class="field"><label for="run-rpe">Effort 1–10</label><input id="run-rpe" inputmode="numeric" data-run="rpe" value="${esc(s.rpe)}" placeholder="1–10"></div>
         </div>
         <div class="chip" id="pace" style="justify-self:start">${paceText(s)}</div>
         <div class="field"><label for="run-note">Notes</label><textarea id="run-note" data-run="note" placeholder="Route, weather, how the legs felt">${esc(s.note)}</textarea></div>
       </div>
       <button class="cta" type="button" data-act="close">Save run</button>
-      <p class="note">${d.id === "runna" ? s.runna ? "Brought in from Runna. Add effort and notes if you like." : "Runs you finish in Runna fill in here by themselves within a few hours, or type the numbers in now." : "If you follow a session in the Run 5K app that day, log the distance and time here too so your whole week is in one place."}</p>
+      <p class="note">${s.runna ? "Brought in from Runna. Add effort and notes if you like." : d.id === "runna" ? "Runs you finish in Runna fill in here by themselves within a few hours, or type the numbers in now." : "From your old plan."}</p>
     </section>`;
 }
 function paceText(s) {
@@ -1165,37 +990,46 @@ function paceText(s) {
 
 // ================= Plan =================
 function planView() {
-  const days = ALL.map(d => `<details class="panel" style="--c:var(${d.c})">
-      <summary class="row" style="cursor:pointer;list-style:none"><span class="stripe"></span><span class="main"><span class="t1" style="font-family:var(--display);font-size:21px;text-transform:uppercase;font-weight:700">${esc(d.name)}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${d.run ? "run" : totalSets(d) + " sets"}</span><span class="chev">⌄</span></summary>
-      <div class="rows" style="border-top:1px solid var(--line)">${d.run ? d.opts.map(([n, desc]) => `<div class="row"><span class="main"><span class="t1">${esc(n)}</span><span class="t2">${esc(desc)}</span></span></div>`).join("")
-        : d.ex.map(ex => `<div class="row">${IMG[variantOf(ex)] ? `<img class="thumb" src="${img(variantOf(ex), 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span class="main"><span class="t1">${esc(variantOf(ex))}</span><span class="t2">Swaps: ${ex.alts.map(a => esc(a[0])).join(" · ")}</span></span><span class="end">${ex.sets}×${ex.lo}–${ex.hi}</span></div>`).join("")}</div>
-    </details>`).join("");
+  if (!hasProg()) return `<section class="view"><div class="head"><div class="eyebrow">Plan</div><h1>Upper / Lower</h1></div>${importCard()}</section>`;
+  const cur = atPos(Math.min(nextPos(), seqLen() - 1)), wk = planWk || cur.wk;
+  const days = order().map(dn => { const d = dayOf(dn), ex = dayPlanEx(wk, dn), here = cur.wk === wk && cur.d === dn;
+    return `<details class="panel" style="--c:var(${d.c})" ${here ? "open" : ""}>
+      <summary class="row" style="cursor:pointer;list-style:none"><span class="stripe"></span><span class="main"><span class="t1" style="font-family:var(--display);font-size:21px;text-transform:uppercase;font-weight:700">${esc(d.name)}${here ? ` <span class="chip good" style="font-family:var(--mono);font-size:10px;vertical-align:middle">next</span>` : ""}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${totalSets(ex)} sets</span><span class="chev">⌄</span></summary>
+      <div class="rows" style="border-top:1px solid var(--line)">${ex.map(x => { const v = variantOf(x);
+        return `<div class="row">${img(v, 1) ? `<img class="thumb" src="${img(v, 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span class="main"><span class="t1">${x.ss ? x.ss + " · " : ""}${esc(v)}</span><span class="t2">${x.pct ? `${esc(x.load)} 1RM${targetW(x) && v === x.name ? ` (${fmtW(targetW(x))} ${esc(S.unit)})` : ""}` : `RPE ${esc(x.load)}`} · rest ${fmtRest(x.rest)}</span></span><span class="end">${esc(x.setsTxt.replace("-", "–"))}×${esc(x.reps.replace("-", "–"))}</span></div>`; }).join("")}
+        <button class="row" type="button" data-act="preview" data-day="${d.id}" data-wk="${wk}" style="color:var(--amber);font-weight:700"><span class="main">Open ${esc(d.name)}, week ${wk}</span><span class="chev">›</span></button></div>
+    </details>`; }).join("");
   return `<section class="view">
-    <div class="head"><div class="eyebrow">4 lifts · 2 runs</div><h1>The plan</h1><p>Push, Pull, Legs and an Upper day hit every muscle about twice a week. Tap a day to see its exercises and swaps.</p></div>
+    <div class="head"><div class="eyebrow">${S.prog.split == 5 ? "5" : "6"} lifts a week · 9 weeks · plus Runna</div><h1>Upper / Lower</h1><p>${esc(PROG_NAME || "Your program")}. Three 3-week waves: an easier week, a harder one, then the hardest, and the loads step up each wave.</p></div>
+    <div class="seg" role="group" aria-label="Week" style="display:grid;grid-template-columns:repeat(9,1fr)">${Array.from({ length: WEEKS }, (_, i) => `<button type="button" data-act="planwk" data-w="${i + 1}" aria-pressed="${i + 1 === wk}" style="padding:6px 0">${i + 1}</button>`).join("")}</div>
+    <p class="note">Week ${wk} · wave ${WAVE(wk)}. ${esc(waveNote(wk))}${S.prog.split == 5 ? " Five-day version: Lower 3 is left out and the order is Upper 1, Lower 1, Upper 2, Lower 2, Upper 3." : ""}</p>
     <div class="group">${days}</div>
     <div class="group"><div class="label">How hard to go</div><div class="panel pad prose"><ul>
-      <li><b>RPE 8</b> means you could have done about 2 more reps. RPE 10 is failure.</li>
-      <li>Big lifts stay at RPE 7–8. Isolation work (raises, curls, flyes) can go to 9–10 on the last set.</li>
-      <li>Rest long enough to repeat your performance: 2–3 min on compounds, about 1 min on small moves.</li></ul></div></div>
-    <div class="group"><div class="label">How to progress</div><div class="panel pad prose"><ul>
-      <li><b>Double progression.</b> Stay at a weight until every set reaches the top of the rep range, then add the smallest jump (about 2.5 kg upper body, 5 kg lower body). Each exercise shows today's target: go up, add a rep, or drop back a little.</li>
-      <li>Every 6–8 weeks, or when several lifts stall, take a lighter week: same exercises, half the sets, RPE 6. The Today tab suggests one when it's time.</li>
-      <li>Runs: grow easy-run time about 10% a week before making the quality run harder. Keep the hard run away from leg day.</li></ul></div></div>
-    <div class="group"><div class="label">Hard sets per muscle each week</div><div class="panel pad"><table class="vol"><tbody>
-      <tr><td>Chest</td><td>11</td></tr><tr><td>Back</td><td>14</td></tr><tr><td>Side delts</td><td>6 + pressing</td></tr><tr><td>Rear delts</td><td>5</td></tr>
-      <tr><td>Quads</td><td>8 + running</td></tr><tr><td>Hamstrings</td><td>6</td></tr><tr><td>Biceps</td><td>7 + rows</td></tr><tr><td>Triceps</td><td>9 + pressing</td></tr></tbody></table>
-      <p class="note" style="margin-top:10px;padding:0">Exercise photos from the public-domain <a class="watch" href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">Free Exercise DB</a>.</p>
-      <p class="note" style="margin-top:6px;padding:0">Built on the evidence-based principles coaches like Jeff Nippard teach: roughly 10–20 hard sets per muscle a week, training close to failure, exercises that load the stretched position, and steady overload. An original plan, not a copy of a paid program.</p></div></div>
+      <li><b>% lifts</b> (squat, bench, deadlift and friends) use a set share of your one-rep max. Add your maxes in Setup and the app works out the weight, rounded to the nearest ${step()} ${esc(S.unit)}.</li>
+      <li><b>RPE</b> is effort out of 10. RPE 8 leaves about 2 reps in the tank, RPE 9 one, RPE 10 none.</li>
+      <li><b>Last-set RPE.</b> After your final set, note how hard it really was. It shows whether you're matching the target.</li>
+      <li>Weeks 1, 4 and 7 are mini-deloads. Don't push them harder than written.</li></ul></div></div>
+    <div class="group"><div class="label">How it progresses</div><div class="panel pad prose"><ul>
+      <li>Primary lifts add a rep each week of a wave, then drop back to the low end with about 2.5% more of your max at the start of the next wave. Your max stays the same, the percentages climb.</li>
+      <li>On RPE lifts, add weight when the target RPE starts to feel easier than written.</li>
+      <li>Slow and steady on the big lifts with perfect form. Push harder and have fun on the smaller ones.</li></ul></div></div>
+    <div class="group"><div class="label">Techniques</div><div class="panel pad prose"><ul>
+      <li><b>A1 / A2</b> is a superset: do A1, go straight into A2, then rest.</li>
+      <li><b>12/12 dropset:</b> 12 reps, drop the weight, 12 more. <b>21s:</b> 7 partial reps in one half, 7 in the other, 7 full.</li>
+      <li><b>AMRAP/2:</b> as many reps as you can at the RPE, then 2 slow, assisted negatives. <b>Myo-reps:</b> 8 reps, rest 5 s, 2 reps, rest 5 s, 2 reps.</li>
+      <li><b>Weak point:</b> pick 2–3 lagging body parts before you start and use one exercise for them on every weak-point slot.</li></ul></div></div>
+    <div class="group"><div class="label">Warm-up before every session</div><div class="panel pad">${warmupTable()}</div></div>
+    <p class="note">Exercise photos from the public-domain <a class="watch" href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">Free Exercise DB</a>. Video links are the ones in the program.</p>
   </section>`;
 }
 
 // ================= Progress =================
 function historyView() {
-  const all = sessionsList().filter(s => s.end || doneSets(s) > 0 || s.dist || (s.ex && Object.values(s.ex).some(e => e.sets.some(filled))));
+  const all = sessionsList().filter(isLogged);
   if (!all.length) return `<section class="view"><div class="head"><div class="eyebrow">Progress</div><h1>Your log</h1></div>
     <div class="empty">Finished workouts and runs show up here, with a chart for each lift.<br><br>Start today's session from the Today tab. Every set saves as you type.</div></section>`;
   const exMap = new Map();
-  for (const s of all) for (const [exId, e] of Object.entries(s.ex || {})) if (e.sets.some(x => num(x.w) && num(x.r))) exMap.set(e.v, true);
+  for (const s of all) for (const e of Object.values(s.ex || {})) if (e.sets.some(x => num(x.w) && num(x.r))) exMap.set(e.v, true);
   const names = [...exMap.keys()].sort();
   if (!histEx || !exMap.has(histEx)) histEx = names[0] || null;
   const totalVol = all.reduce((n, s) => n + sessionVolume(s), 0);
@@ -1207,24 +1041,33 @@ function historyView() {
     if (d.run) body = `<ul><li>${esc(s.variant || "")} <span>${s.dist ? esc(s.dist) + " km" : ""}${s.time ? " · " + esc(s.time) + " min" : ""}${s.dist && s.time ? " · " + paceText(s).replace("Pace ", "") : ""}</span></li></ul>`;
     else body = `<ul>${Object.values(s.ex || {}).filter(e => e.sets.some(filled)).map(e => `<li>${esc(e.v)} <span>${e.sets.filter(filled).map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join(" ")}</span></li>`).join("") || "<li><span>No sets entered</span></li>"}</ul>`;
     const del = pendingDel.has(s.id);
-    return `<article class="panel hitem" style="--c:var(${d.c})"><header><h4>${esc(d.name)}</h4><time>${fmtDate(s.date)}</time></header>${body}${s.note ? `<p class="note" style="padding:0">${esc(s.note)}</p>` : ""}
+    return `<article class="panel hitem" style="--c:var(${d.c})"><header><h4>${esc(d.run ? d.name : sessName(s))}</h4><time>${fmtDate(s.date)}</time></header>${body}${s.note ? `<p class="note" style="padding:0">${esc(s.note)}</p>` : ""}
       <div class="hbtns"><button class="sbtn" type="button" data-act="open" data-id="${s.id}">Open</button>${del ? `<button class="sbtn danger" type="button" data-act="delyes" data-id="${s.id}">Yes, delete</button><button class="sbtn" type="button" data-act="delno" data-id="${s.id}">Keep</button>` : `<button class="sbtn danger" type="button" data-act="del" data-id="${s.id}">Delete</button>`}</div></article>`;
   }).join("");
+  const pos = nextPos(), total = seqLen();
   return `<section class="view">
     <div class="head"><div class="eyebrow">Progress</div><h1>Your log</h1></div>
     <div class="panel pad"><div class="telemetry" style="border:0"><div><span class="k">Workouts</span><span class="v">${lifts}</span></div><div><span class="k">Lifted</span><span class="v">${fmtK(totalVol)}<small>${S.unit}</small></span></div><div><span class="k">Ran</span><span class="v">${km.toFixed(1)}<small>km</small></span></div></div></div>
-    ${musclePanel()}
+    ${hasProg() ? `<div class="group"><div class="label">Upper/Lower program</div><div class="panel pad" style="display:grid;gap:8px"><div class="prog"><i style="width:${Math.min(100, pos / total * 100)}%"></i></div>
+      <p class="note" style="padding:0">${Math.min(pos, total)} of ${total} sessions${pos < total ? `. Next: week ${atPos(pos).wk}, ${esc(dayOf(atPos(pos).d).name)}.` : ". Program finished."}</p></div></div>` : ""}
     ${bwPanel()}
     ${names.length ? `<div class="group"><div class="label">Strength trend</div><div class="panel pad" style="display:grid;gap:12px">
       <select class="select" id="hist-ex" aria-label="Exercise">${names.map(n => `<option ${n === histEx ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
       ${chart(histEx)}</div></div>` : ""}
-    ${(() => { const st = stalledLifts(); return st.length ? `<div class="group"><div class="label">Stalled for 3 weeks</div><div class="panel rows">${st.map(n => { const ex = DAYS.flatMap(d => d.ex).find(e => variantOf(e) === n); return `<button class="row" type="button" data-act="stall" data-name="${esc(n)}" data-ex="${ex.id}" style="--c:var(--amber)"><span class="stripe"></span><span class="main"><span class="t1">${esc(n)}</span><span class="t2">No new best since ${fmtDate(series(n).reduce((a, b) => b.v > a.v ? b : a).date)}</span></span><span class="chev">›</span></button>`; }).join("")}</div></div>` : ""; })()}
     ${runningPanel()}
-    ${readinessPanel()}
     <div class="group"><div class="label">Last 12 weeks</div>${heatmap(all)}</div>
     <div class="group"><div class="label">Sessions</div>${list}
       ${all.length > histMore ? `<button class="cta quiet" type="button" data-act="more">Show ${Math.min(10, all.length - histMore)} more</button>` : ""}</div>
   </section>`;
+}
+// Best estimated 1RM per session for one variation.
+function series(name) {
+  return memo["s:" + name] ||= Object.values(S.sessions).map(s => {
+    const e = Object.values(s.ex || {}).find(e => e.v === name); if (!e) return null;
+    let best = 0, top = null;
+    for (const x of e.sets) { const v = e1rm(num(x.w), num(x.r)); if (v > best) { best = v; top = x; } }
+    return best ? { date: s.date, v: best, top } : null;
+  }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 }
 // One square per day, coloured by what you trained. Tap a day to open it.
 function heatmap(all) {
@@ -1236,7 +1079,7 @@ function heatmap(all) {
     const dd = addDays(start, i), ss = by[dd] || [], d = ss[0] && byId(ss[0].day);
     if (dd > today) return `<span class="hm future"></span>`;
     for (const s of ss) byId(s.day).run ? runs++ : lifts++;
-    return `<button type="button" class="hm ${ss.length ? "on" : ""} ${dd === today ? "now" : ""}" data-act="day" data-date="${dd}" data-day="" style="--c:${d ? `var(${d.c})` : "transparent"}" aria-label="${fmtDate(dd)}${ss.length ? ": " + ss.map(s => byId(s.day).name).join(", ") : ""}">${ss.length > 1 ? "<i></i>" : ""}</button>`;
+    return `<button type="button" class="hm ${ss.length ? "on" : ""} ${dd === today ? "now" : ""}" data-act="day" data-date="${dd}" style="--c:${d ? `var(${d.c})` : "transparent"}" aria-label="${fmtDate(dd)}${ss.length ? ": " + ss.map(s => byId(s.day).name).join(", ") : ""}">${ss.length > 1 ? "<i></i>" : ""}</button>`;
   }).join("");
   return `<div class="panel pad" style="display:grid;gap:10px"><div class="hmgrid">${WD.map(w => `<span class="hmd">${w[0]}</span>`).join("")}${cells}</div>
     <p class="note" style="padding:0">${lifts} lift${lifts === 1 ? "" : "s"} and ${runs} run${runs === 1 ? "" : "s"} in 12 weeks. Each row is a week, colours match the training day. Tap a day to open it.</p></div>`;
@@ -1255,7 +1098,6 @@ function lineChart(pts, { fmt, invert, label }) {
   const pad = Math.max((hi - lo) * 0.15, hi * 0.04, 0.1), y0 = Math.max(0, lo - pad), y1 = hi + pad;
   const x = i => pts.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (pts.length - 1);
   const y = v => { const f = (v - y0) / (y1 - y0); return T + (invert ? f : 1 - f) * (H - T - B); };
-  const base = invert ? T : H - B;
   const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
   const area = `${line}L${x(pts.length - 1).toFixed(1)},${H - B}L${x(0).toFixed(1)},${H - B}Z`;
   const ticks = [y0, (y0 + y1) / 2, y1].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="rgba(255,220,190,.08)"/><text x="${L - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v)}</text>`).join("");
@@ -1270,21 +1112,31 @@ function lineChart(pts, { fmt, invert, label }) {
 
 // ================= Setup =================
 function setupView() {
-  const opts = id => `<option value="">Rest</option>${ALL.map(d => `<option value="${d.id}" ${d.id === id ? "selected" : ""}>${esc(d.name)}</option>`).join("")}`;
+  const pos = nextPos(), cur = atPos(Math.min(pos, seqLen() - 1));
   return `<section class="view">
     <div class="head"><div class="eyebrow">Setup</div><h1>Your setup</h1></div>
     <div class="group"><div class="label">Units</div><div class="panel setline"><span>Weight unit</span><div class="seg"><button type="button" data-act="unit" data-u="kg" aria-pressed="${S.unit === "kg"}">kg</button><button type="button" data-act="unit" data-u="lb" aria-pressed="${S.unit === "lb"}">lb</button></div></div></div>
-    <div class="group"><div class="label">Weekly schedule</div><div class="panel">${WD.map((w, i) => `<div class="setline"><label for="sch-${i}">${w}</label><select id="sch-${i}" data-sch="${i}">${opts(S.schedule[i])}</select></div>`).join("")}</div>
-      <p class="note">Move days around to fit your week. Try to keep a rest day or easy run after Legs.</p></div>
-    <div class="group"><div class="label">Missed workouts</div><div class="panel setline"><span>Carry a missed lift to the next day</span><div class="seg"><button type="button" data-act="rolloff" data-v="" aria-pressed="${!S.roll?.off}">On</button><button type="button" data-act="rolloff" data-v="1" aria-pressed="${!!S.roll?.off}">Off</button></div></div>
-      <p class="note">On: a lift you don't log stays due the next day without a run, and the rest of the plan shifts along. Runs keep their dates. Off: every day follows the schedule above.</p></div>
+    <div class="group"><div class="label">Program</div>
+      <div class="panel pad prose">${hasProg() ? `<p>Loaded: <b>${esc(PROG_NAME || "your program")}</b>, ${WEEKS} weeks. ${S.program ? "Imported from a file and saved in your backups." : "Built into the app."}</p>` : ""}<label class="sbtn" style="justify-self:start;cursor:pointer">${hasProg() ? "Replace program file" : "Import program file"}<input type="file" accept="application/json,.json" id="prog-import" hidden></label></div>
+      ${hasProg() ? `
+      <div class="panel setline"><span>Lift days a week</span><div class="seg"><button type="button" data-act="split" data-v="6" aria-pressed="${S.prog.split != 5}">6</button><button type="button" data-act="split" data-v="5" aria-pressed="${S.prog.split == 5}">5</button></div></div>
+      <p class="note">6 is the program as written. 5 is its own fallback if six is too much alongside your runs: Lower 3 drops out, lower body gets trained twice a week, upper three times.</p>
+      <div class="panel pad" style="display:grid;gap:10px"><span>Days you lift</span><div class="chips">${WD.map((w, i) => `<button class="gear" type="button" data-act="liftday" data-i="${i}" aria-pressed="${!!S.prog.days[i]}">${w}</button>`).join("")}</div>
+        <p class="note" style="padding:0">Workouts go in order onto these days. Miss one and it waits for your next lift day. Pick ${S.prog.split == 5 ? 5 : 6} days so a program week fits a calendar week.</p></div>
+      <div class="panel pad" style="display:grid;gap:10px"><span>Next workout: <b>week ${cur.wk}, ${esc(dayOf(cur.d).name)}</b> (${Math.min(pos, seqLen())} of ${seqLen()} done)</span>
+        <div class="grid2"><select class="select" id="jump-wk" aria-label="Week">${Array.from({ length: WEEKS }, (_, i) => `<option value="${i + 1}" ${i + 1 === cur.wk ? "selected" : ""}>Week ${i + 1}</option>`).join("")}</select>
+          <select class="select" id="jump-d" aria-label="Day">${order().map(d => `<option value="${d}" ${d === cur.d ? "selected" : ""}>${dayOf(d).name}</option>`).join("")}</select></div>
+        <button class="sbtn" type="button" data-act="jump" style="justify-self:start">Make this my next workout</button></div>` : ""}</div>
+    <div class="group"><div class="label">One-rep maxes</div><div class="panel">${PCT_LIFTS.map(id => { const est = estMax(id);
+      return `<div class="setline"><label for="mx-${id}">${esc(EX[id][0])}${MAXOF[id] ? `<br><small style="color:var(--faint)">blank = uses deadlift</small>` : ""}</label><span style="display:flex;gap:6px;align-items:center"><input class="select num" style="width:96px;text-align:right" id="mx-${id}" inputmode="decimal" data-max="${id}" value="${esc(S.maxes[id] || "")}" placeholder="${est || "–"}"><small style="color:var(--muted)">${esc(S.unit)}</small></span></div>`; }).join("")}</div>
+      <p class="note">These set the weight on every % lift. Grey numbers are estimates from your log, so type them in to use them. To test one: warm up (bar×15, 50%×8, 60%×4, 70%×3, 80%×2, 85%×1), then as many reps as you can with about 90% and a spotter. A 3–5 rep max set works too. Max ≈ weight × (1 + reps ÷ 30). Test on its own day and rest 2 days before Week 1.</p></div>
     <div class="group"><div class="label">Runna</div><div class="panel pad prose">${RUNNA
-      ? `<p>Synced ${RUNNA.count} Runna session${RUNNA.count === 1 ? "" : "s"}${RUNNA.changed ? `, last change picked up ${esc(new Date(RUNNA.changed).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}` : ""}.</p><p>Runs now come from Runna, so the run days in the schedule above are ignored. Lift days stay where you put them. New Runna changes show up within a few hours.</p>`
+      ? `<p>Synced ${RUNNA.count} Runna session${RUNNA.count === 1 ? "" : "s"}${RUNNA.changed ? `, last change picked up ${esc(new Date(RUNNA.changed).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}` : ""}.</p><p>Your runs come straight from Runna and finished runs log themselves. Lifting follows the program on your lift days. New Runna changes show up within a few hours.</p>`
       : `<p>Not connected. To show your Runna plan here: in Runna go to Profile, Settings, Calendar Sync and copy the link. Then add it on GitHub as a secret named <b>RUNNA_ICS_URL</b> in the gym-log repo's <a href="https://github.com/Rozbeh99/gym-log/settings/secrets/actions" target="_blank" rel="noopener" style="color:var(--amber)">Actions secrets</a>.</p>`}</div></div>
     <div class="group"><div class="label">5K race</div><div class="panel setline"><label for="race-date">Race day</label><input type="date" id="race-date" value="${raceDate() || ""}"></div>
-      <p class="note">${S.race ? "Set by you. Clear it to follow your Runna plan again." : raceDate() ? "Picked from your Runna plan. Change it if your race is on another day." : "Set it to get a countdown, a predicted time and a lighter leg day in race week."}</p></div>
-    <div class="group"><div class="label">Exercise swaps</div><div class="panel pad prose"><p>${Object.keys(S.swaps).length ? `${Object.keys(S.swaps).length} exercises swapped for what your gym has.` : "No swaps yet. Tap Swap on any exercise during a workout."}</p>
-      ${Object.keys(S.swaps).length ? `<button class="sbtn" type="button" data-act="resetswaps" style="justify-self:start">Go back to the original exercises</button>` : ""}</div></div>
+      <p class="note">${S.race ? "Set by you. Clear it to follow your Runna plan again." : raceDate() ? "Picked from your Runna plan. Change it if your race is on another day." : "Set it to get a countdown and a predicted time."}</p></div>
+    <div class="group"><div class="label">Exercise swaps</div><div class="panel pad prose"><p>${Object.keys(S.swaps).length ? `${Object.keys(S.swaps).length} exercises swapped or picked (weak points count too).` : "No swaps yet. Tap Swap on any exercise to use one of the program's substitutes."}</p>
+      ${Object.keys(S.swaps).length ? `<button class="sbtn" type="button" data-act="resetswaps" style="justify-self:start">Go back to the program's exercises</button>` : ""}</div></div>
     <div class="group"><div class="label">Backup</div><div class="panel pad" style="display:grid;gap:10px">
       <p class="note" style="padding:0">Your log lives on this phone only. Save a backup file now and then, or before you switch phones.</p>
       <div class="btnrow"><button class="sbtn" type="button" data-act="export">Save backup</button><label class="sbtn" style="text-align:center;cursor:pointer">Restore backup<input type="file" accept="application/json,.json" id="import" hidden></label></div>
@@ -1299,20 +1151,23 @@ function sheet(html) {
   document.getElementById("layer").innerHTML = `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div></div>`;
 }
 function closeSheet() { document.getElementById("layer").innerHTML = ""; }
+const exById = (dayId, exId, s) => (s ? planFor(s).ex : DAYDEF.find(d => d.id === dayId) ? PROG.map(w => w[dnum(dayId) - 1]).flat().map(exOf) : []).find(e => e.id === exId);
 function swapSheet(s, exId, dayId) {
-  const ex = byId(s ? s.day : dayId).ex.find(e => e.id === exId), cur = s?.ex[exId]?.v || variantOf(ex);
-  sheet(`<h3>Swap exercise</h3><p class="note" style="padding:0">Pick what your gym has. The choice sticks for future workouts, and each variation keeps its own history.</p>
-    <div class="opts">${[[ex.name, "Plan"], ...ex.alts].map(([n, eq]) => `<button class="opt" type="button" data-act="pick" data-day="${s ? s.day : dayId}" data-ex="${exId}" data-name="${esc(n)}" aria-pressed="${n === cur}">${IMG[n] ? `<img class="thumb" src="${img(n, 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span style="flex:1;min-width:0">${esc(n)}</span><span class="eq">${esc(eq)}</span></button>`).join("")}</div>
-    <button class="cta quiet" type="button" data-act="closesheet">Cancel</button>`);
+  const ex = exById(dayId, exId, s); if (!ex) return;
+  const cur = s?.ex[exId]?.v || variantOf(ex);
+  const opt = (n, tag) => `<button class="opt" type="button" data-act="pick" data-ex="${exId}" data-day="${dayId}" data-name="${esc(n)}" aria-pressed="${n === cur}">${img(n, 1) ? `<img class="thumb" src="${img(n, 1)}" alt="" loading="lazy">` : `<span class="thumb none">▶</span>`}<span style="flex:1;min-width:0">${esc(n)}</span><span class="eq">${esc(tag)}</span></button>`;
+  const body = ex.wp ? WEAK[ex.wp].map(([part, list]) => `<div class="label">${esc(part)}</div><div class="opts">${list.map(n => opt(n, part)).join("")}</div>`).join("")
+    : `<div class="opts">${[[ex.name, "Program"], ...ex.swaps.map(n => [n, "Swap"])].map(([n, t]) => opt(n, t)).join("")}</div>`;
+  sheet(`<h3>${ex.wp ? `${ex.wp === "upper" ? "Upper" : "Lower"} body weak point` : "Swap exercise"}</h3><p class="note" style="padding:0">${ex.wp ? "Pick one exercise for the body part you most want to bring up. It's used on every weak-point slot until you change it." : "The program's own substitutes. Your choice sticks for future workouts, and each variation keeps its own history."}</p>
+    ${body}<button class="cta quiet" type="button" data-act="closesheet">Cancel</button>`);
 }
-
-function demoSheet(name, exId) {
-  const ex = ALL.flatMap(d => d.ex || []).find(e => e.id === exId);
+function demoSheet(name, exId, dayId) {
+  const ex = exById(dayId, exId, open && S.sessions[open]);
   sheet(`<h3>${esc(name)}</h3>
     <div class="frames"><figure><img src="${img(name, 0)}" alt="${esc(name)}, start position"><figcaption>1 · Start</figcaption></figure><figure><img src="${img(name, 1)}" alt="${esc(name)}, end position"><figcaption>2 · Finish</figcaption></figure></div>
-    ${ex ? `<p class="note" style="padding:0;color:var(--ink)">${esc(ex.cue)}</p>` : ""}
-    ${ex && name !== ex.name ? `<p class="note" style="padding:0">Photo shows the closest standard version of this exercise.</p>` : ""}
-    <div class="btnrow"><a class="cta quiet" href="${yt(name)}" target="_blank" rel="noopener" style="font-size:16px">▶ Video</a><button class="cta quiet" type="button" data-act="closesheet" style="font-size:16px">Close</button></div>`);
+    ${ex?.note ? `<p class="note" style="padding:0;color:var(--ink)">${esc(ex.note)}</p>` : ""}
+    <p class="note" style="padding:0">Photos show the closest standard version of this exercise.${ex?.video && name === ex.name ? " The video is the one linked in the program." : ""}</p>
+    <div class="btnrow"><a class="cta quiet" href="${ex ? videoFor(ex, name) : videoFor({}, name)}" target="_blank" rel="noopener" style="font-size:16px">▶ Video</a><button class="cta quiet" type="button" data-act="closesheet" style="font-size:16px">Close</button></div>`);
 }
 
 // ================= Rest timer =================
@@ -1348,27 +1203,44 @@ function tickClock() {
 setInterval(tickClock, 15000);
 
 // ================= Events =================
+function saveMax(id, v) {
+  v = String(v ?? "").trim().replace(",", ".");
+  if (num(v) > 0) S.maxes[id] = String(num(v)); else delete S.maxes[id];
+  save(true);
+}
 document.addEventListener("click", ev => {
   if (ev.target.id === "scrim") return closeSheet();
   const b = ev.target.closest("[data-tab],[data-act]"); if (!b) return;
   if (b.dataset.tab) return go(b.dataset.tab);
   const a = b.dataset.act, s = open && S.sessions[open];
   switch (a) {
-    case "start": return startSession(b.dataset.day, b.dataset.date);
+    case "start": closeSheet(); return startSession(b.dataset.day, b.dataset.date, b.dataset.wk);
     case "runnamove": {
       const mv = S.runnaMoves || (S.runnaMoves = {}), r = RUNNA?.all[b.dataset.id];
-      if (b.dataset.to) { mv[b.dataset.id] = b.dataset.to; swapLiftFor(b.dataset.id); } else { delete mv[b.dataset.id]; unswapLiftFor(b.dataset.id); }
-      const sw = S.runnaSwaps?.[b.dataset.id];
-      save(); toast(!b.dataset.to ? `Back on ${r ? fmtDate(r.date) : "its day"}.` : sw ? `Run moved to today. ${byId(sw.lift).name} moved to ${fmtDate(sw.dest)}.` : "Moved to today. Log it here when you're done.");
-      if (b.dataset.to) preview = { day: "runna", date: b.dataset.to }; else { preview = null; }
+      if (b.dataset.to) mv[b.dataset.id] = b.dataset.to; else delete mv[b.dataset.id];
+      save(); toast(!b.dataset.to ? `Back on ${r ? fmtDate(r.date) : "its day"}.` : "Moved to today. Log it here when you're done.");
+      preview = b.dataset.to ? { day: "runna", date: b.dataset.to } : null;
       render(); return window.scrollTo(0, 0);
     }
-    case "preview": closeSheet(); preview = { day: b.dataset.day, date: b.dataset.date || todayISO() }; render(); return window.scrollTo(0, 0);
+    case "preview": closeSheet(); preview = { day: b.dataset.day, wk: b.dataset.wk, date: b.dataset.date || todayISO() }; render(); return window.scrollTo(0, 0);
     case "unpreview": preview = null; render(); return window.scrollTo(0, 0);
-    case "day": return openDay(b.dataset.date, b.dataset.day);
+    case "day": return openDay(b.dataset.date);
     case "wk": ev.preventDefault(); weekOff = +b.dataset.d === 0 ? 0 : weekOff + +b.dataset.d; return render();
     case "resume": open = S.active; render(); return window.scrollTo(0, 0);
     case "others": return othersSheet();
+    case "skip": {
+      ev.preventDefault();
+      const n = atPos(nextPos()), nx = atPos(nextPos() + 1);
+      if (nextPos() + 1 >= seqLen()) S.prog.cursor = { wk: WEEKS + 1, d: order()[0], at: Date.now() }; else setCursor(nx.wk, nx.d);
+      save(true); toast(`${dayOf(n.d).name} skipped. Next is ${nextPos() < seqLen() ? dayOf(nx.d).name : "the end of the program"}.`); return render();
+    }
+    case "cursor": setCursor(+b.dataset.wk, +b.dataset.d); preview = null; toast(`Next workout: week ${b.dataset.wk}, ${dayOf(+b.dataset.d).name}`); render(); return window.scrollTo(0, 0);
+    case "jump": { const w = +document.getElementById("jump-wk").value, d = +document.getElementById("jump-d").value; setCursor(w, d); toast(`Next workout: week ${w}, ${dayOf(d).name}`); return render(); }
+    case "restart": setCursor(1, order()[0]); toast("Back to Week 1. Update your maxes in Setup first."); return render();
+    case "planwk": planWk = +b.dataset.w; return render();
+    case "split": S.prog.split = +b.dataset.v; { const c = S.prog.cursor; if (c && !order().includes(c.d)) c.d = order()[0]; } save(true); return render();
+    case "liftday": S.prog.days[+b.dataset.i] = S.prog.days[+b.dataset.i] ? 0 : 1; save(true); return render();
+    case "maxsave": { const inp = document.getElementById("max-" + b.dataset.ex); saveMax(b.dataset.id, inp?.value.trim() || inp?.placeholder); toast(maxFor(b.dataset.ex) ? "Saved. Weights worked out." : "Cleared"); return render(); }
     case "bwsave": {
       const v = (document.querySelector(".sheet #bw-in") || document.getElementById("bw-in"))?.value.trim().replace(",", ".");
       S.bw ||= {};
@@ -1382,12 +1254,12 @@ document.addEventListener("click", ev => {
     case "closesheet": return closeSheet();
     case "closesheet-home": closeSheet(); open = null; tab = "today"; render(); return window.scrollTo(0, 0);
     case "swap": return swapSheet(s, b.dataset.ex, b.dataset.day);
-    case "demo": return demoSheet(b.dataset.name, b.dataset.ex);
+    case "demo": return demoSheet(b.dataset.name, b.dataset.ex, b.dataset.day);
     case "pick": {
-      const ex = byId(b.dataset.day).ex.find(e => e.id === b.dataset.ex), n = b.dataset.name;
+      const ex = exById(b.dataset.day, b.dataset.ex, s), n = b.dataset.name;
       if (n === ex.name) delete S.swaps[ex.id]; else S.swaps[ex.id] = n;
-      if (s) exEntry(s, ex.id).v = n;
-      save(); closeSheet(); render(); toast("Swapped to " + n); return;
+      if (s && !s.end) exEntry(s, ex.id).v = n;
+      save(); closeSheet(); render(); toast((ex.wp ? "Weak point: " : "Swapped to ") + n); return;
     }
     case "tick": {
       const e = exEntry(s, b.dataset.ex), k = +b.dataset.k, x = e.sets[k] || (e.sets[k] = {});
@@ -1396,8 +1268,8 @@ document.addEventListener("click", ev => {
         const w = document.getElementById(`w-${b.dataset.ex}-${k}`), r = document.getElementById(`r-${b.dataset.ex}-${k}`);
         if (!filled({ w: x.w }) && w.placeholder !== "–") { x.w = w.placeholder; w.value = x.w; }
         if (!x.r && /^\d+$/.test(r.placeholder)) { x.r = r.placeholder; r.value = x.r; }
-        const ex = byId(s.day).ex.find(q => q.id === b.dataset.ex);
-        if (!s.end) startRest(ex.rest, e.v);
+        const ex = planFor(s).ex.find(q => q.id === b.dataset.ex);
+        if (!s.end) { if (ex.rest[0] > 0) startRest(ex.rest[0], e.v); else toast(`Straight into the next exercise (superset), then rest`); }
       }
       b.setAttribute("aria-pressed", x.done); b.closest(".setrow").classList.toggle("on", x.done);
       b.closest(".ex").classList.toggle("complete", e.sets.every(q => q.done));
@@ -1405,53 +1277,22 @@ document.addEventListener("click", ev => {
     }
     case "addset": { const e = exEntry(s, b.dataset.ex); const prev = e.sets[e.sets.length - 1] || {}; e.sets.push({ w: prev.w || "" }); save(); return render(); }
     case "rmset": { const e = exEntry(s, b.dataset.ex); e.sets.pop(); save(); return render(); }
-    case "runopt": s.variant = b.dataset.name; S.swaps[s.day] = b.dataset.name; save(); return render();
     case "del": pendingDel.add(b.dataset.id); return render();
     case "delno": pendingDel.delete(b.dataset.id); return render();
     case "delyes": if (S.active === b.dataset.id) S.active = null; delete S.sessions[b.dataset.id]; pendingDel.delete(b.dataset.id); save(true); toast("Deleted"); return render();
     case "unit": S.unit = b.dataset.u; if (S.active && S.sessions[S.active] && !doneSets(S.sessions[S.active])) S.sessions[S.active].unit = S.unit; save(); return render();
-    case "resetswaps": for (const k of Object.keys(S.swaps)) if (!RUNS.some(r => r.id === k)) delete S.swaps[k]; save(); toast("Back to the original exercises"); return render();
+    case "resetswaps": S.swaps = {}; save(); toast("Back to the program's exercises"); return render();
     case "export": {
       const blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
       const file = new File([blob], `gym-log-${todayISO()}.json`, { type: "application/json" });
       if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file], title: "Gym Log backup" }).catch(() => {}); return; }
       const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = file.name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return;
     }
-    case "rd": {
-      s.rd = { ...s.rd, [b.dataset.k]: +b.dataset.v };
-      const sc = readyScore(s.rd);
-      if (sc && sc <= 2.4 && !s.mode) { toast("Rough day: lighter session set up"); return setMode(s, "lite"); }
-      save(); return render();
-    }
-    case "rdskip": s.rdSkip = true; save(); return render();
-    case "rdreset": ev.preventDefault(); s.rd = {}; s.rdSkip = false; save(); return render();
-    case "mode": return setMode(s, b.dataset.m);
-    case "busy": return busySheet(s);
-    case "gear": { const g = b.dataset.g, cur = S.gear || GEAR.slice(); S.gear = cur.includes(g) ? cur.filter(x => x !== g) : [...cur, g]; save(); return busySheet(s); }
-    case "busyapply": {
-      let n = 0;
-      for (const p of busyPlan(s)) if (p.pick && p.pick !== p.cur) { exEntry(s, p.ex.id).v = p.pick; n++; }
-      save(); closeSheet(); render(); return toast(n ? `Swapped ${n} exercise${n === 1 ? "" : "s"} for today` : "Nothing needed swapping");
-    }
-    case "stall": return stallSheet(b.dataset.name, b.dataset.ex);
-    case "moveday": S.moves[b.dataset.from] = ""; S.moves[b.dataset.to] = "legs"; save(); toast(`Legs moved to ${fmtDate(b.dataset.to)}. Your usual week stays the same.`); return render();
-    case "rollskip": closeSheet(); return skipLift(b.dataset.day);
-    case "rollreset": return resetRoll();
-    case "rolloff": S.roll = { ...S.roll, off: !!b.dataset.v, since: todayISO(), skip: {} }; save(); return render();
-    case "liteday": S.lite[b.dataset.date] = 1; save(); toast("That leg day will be lighter"); return render();
-    case "deload": {
-      S.deload = S.lastDeload = iso(weekStart());
-      const a = S.active && S.sessions[S.active];
-      if (a && !doneSets(a) && !a.mode) a.mode = "deload";
-      save(); closeSheet(); toast("Lighter week on: half the sets, RPE 6"); return render();
-    }
-    case "deloadend": S.deload = null; save(); return render();
-    case "deloadno": S.deloadNo = iso(weekStart()); save(); return render();
     case "runs": go("history"); return document.getElementById("running")?.scrollIntoView({ block: "start" });
     case "rmetric": runMetric = b.dataset.m; return render();
     case "wipe": pendingDel.add("ALL"); return render();
     case "wipeno": pendingDel.delete("ALL"); return render();
-    case "wipeyes": S = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {}, roll: { since: todayISO(), skip: {} } }; pendingDel.delete("ALL"); save(true); toast("Everything erased"); return render();
+    case "wipeyes": S = tidy({ program: S.program }); pendingDel.delete("ALL"); save(true); toast("Everything erased"); return render();
   }
 });
 document.addEventListener("input", ev => {
@@ -1461,23 +1302,28 @@ document.addEventListener("input", ev => {
     (e.sets[k] || (e.sets[k] = {}))[el.dataset.f] = el.value.trim().replace(",", ".");
     return save();
   }
+  if (s && el.dataset.ls) { exEntry(s, el.dataset.ls).ls = el.value.trim().replace(",", "."); return save(); }
   if (s && el.dataset.run) { s[el.dataset.run] = el.value; const p = document.getElementById("pace"); if (p) p.textContent = paceText(s); return save(); }
   if (s && el.id === "wo-note") { s.note = el.value; return save(); }
 });
 document.addEventListener("change", ev => {
   const el = ev.target, s = open && S.sessions[open];
   if (s && el.id === "wo-date" && el.value) { s.date = el.value; save(); return; }
-  if (el.dataset.sch !== undefined) { S.schedule[+el.dataset.sch] = el.value; save(); return; }
+  if (el.dataset.max && el.id.startsWith("mx-")) { saveMax(el.dataset.max, el.value); return; }
   if (el.id === "hist-ex") { histEx = el.value; return render(); }
   if (el.id === "race-date") { if (el.value) S.race = el.value; else delete S.race; save(); return render(); }
-  if (el.id === "import" && el.files[0]) {
+  if ((el.id === "import" || el.id === "prog-import") && el.files[0]) {
     el.files[0].text().then(t => {
       const d = JSON.parse(t);
-      if (!d || typeof d.sessions !== "object") throw new Error();
-      S = { unit: "kg", schedule: DEFAULT_SCHEDULE.slice(), swaps: {}, sessions: {}, active: null, moves: {}, lite: {}, ...d };
-      S.roll ||= { since: todayISO(), skip: {} };
+      if (d?.format === "gymlog-program") {
+        const p = cleanProgram(d); if (!p) throw new Error();
+        S.program = p; useProgram(p); save(true); toast(`Loaded ${p.name || "program"}: ${WEEKS} weeks`); el.value = ""; return render();
+      }
+      if (el.id === "prog-import" || !d || typeof d.sessions !== "object") throw new Error();
+      const keep = S.program;
+      S = tidy(d); if (!S.program && keep) S.program = keep; useProgram(S.program || cleanProgram(BUILTIN));
       save(true); toast(`Restored ${Object.keys(S.sessions).length} sessions`); render();
-    }).catch(() => toast("That file isn't a Gym Log backup."));
+    }).catch(() => toast(el.id === "prog-import" ? "That file isn't a Gym Log program file." : "That file isn't a Gym Log backup."));
   }
 });
 

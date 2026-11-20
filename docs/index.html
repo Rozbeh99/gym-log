@@ -309,6 +309,12 @@ textarea { resize: vertical; min-height: 70px; }
 .bwform span { color: var(--muted); font-size: 13px; }
 .bwform .sbtn { padding: 7px 12px; }
 .lsrpe { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.info { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--panel-2); color: var(--accent); font: 800 11.5px/18px var(--body); text-align: center; vertical-align: 1px; margin-left: 4px; cursor: pointer; }
+.info:active { background: var(--accent-fill); color: var(--on-btn); }
+.lsrpe .info { margin-left: -4px; }
+.rpetab { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+.rpetab b { font-family: var(--mono); font-size: 16px; color: var(--title); }
+.rpetab .on, .rpetab .on + span { color: var(--accent); font-weight: 700; }
 .lsrpe input { width: 46px; background: var(--panel-2); border: 1.5px solid transparent; border-radius: 8px; padding: 4px 6px; font-family: var(--mono); font-size: 15px; font-weight: 600; text-align: center; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 /* Exercise details behind a tap, and the one-line prescription */
@@ -400,6 +406,18 @@ function cleanProgram(p) {
   for (const k of ["upper", "lower"]) weak[k] = (p.weakPoints?.[k] || []).filter(Array.isArray).slice(0, 12).map(([part, list]) => [str(part, 30), (Array.isArray(list) ? list : []).slice(0, 8).map(x => str(x, 80))]);
   return { format: "gymlog-program", version: 1, name: str(p.name, 80), weeks, exercises: ex, weakPoints: weak };
 }
+// Pull-up and chin-up variations you can do before you have a full rep: machine assisted or with a band.
+// The weight field holds how much help you get, so less is harder.
+const PULLUP = /\b(pull-?up|chin-?up)\b/i, ASSIST = /^(Assisted|Banded) /;
+const isAssist = n => ASSIST.test(n || "");
+const assistKind = n => /^Banded /.test(n || "") ? "band" : "machine";
+function addAssisted() {
+  for (const m of Object.values(EX)) {
+    const own = PULLUP.test(m[0]) && !isAssist(m[0]);
+    const add = [m[0], ...m[2]].filter(n => PULLUP.test(n) && !isAssist(n)).flatMap(n => { const b = n.replace(/\s*\+.*$/, ""); return [`Assisted ${b}`, `Banded ${b}`]; }).filter(n => !m[2].includes(n));
+    m[2] = own ? [...add, ...m[2]] : [...m[2], ...add];
+  }
+}
 function useProgram(p) {
   PROG = p?.weeks || []; EX = p?.exercises || {}; WEAK = p?.weakPoints || { upper: [], lower: [] }; WEEKS = PROG.length; PROG_NAME = p?.name || "";
   PCT_LIFTS = [...new Set(PROG.flat(2).filter(r => /%$/.test(r[3])).map(r => r[0]))];
@@ -408,6 +426,7 @@ function useProgram(p) {
     const list = (WEAK[side] || []).find(([p]) => p === part)?.[1] || [];
     if (list.includes(pick)) { FOCUS_EX[id] = part; EX[id] ||= [pick, "", list.filter(n => n !== pick), ""]; }
   }
+  addAssisted();
 }
 // Focus muscles: chest, lats, biceps and quads. The program's weak-point slots are set to them, and Upper 1 and
 // Lower 1 get one extra weak-point-style finisher, so on 4 days each muscle gets direct work twice a week.
@@ -583,6 +602,7 @@ const dowOf = dISO => dowIdx(new Date(dISO + "T12:00:00"));
 const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const fmtRest = ([a, b]) => !b ? "none" : b < 120 && a === b ? b + " s" : a === b ? a / 60 + " min" : `${a / 60}–${b / 60} min`;
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
+const setScore = (name, x) => isAssist(name) ? (num(x.r) > 0 ? 1000 - num(x.w) + Math.min(num(x.r), 30) / 100 : 0) : e1rm(num(x.w), num(x.r));
 const e1rm = (w, r) => w > 0 && r > 0 ? w * (1 + Math.min(r, 15) / 30) : 0;
 const variantOf = ex => S.swaps[ex.id] || ex.name;
 const sessionsList = () => Object.values(S.sessions).sort((a, b) => b.date.localeCompare(a.date) || (b.start || 0) - (a.start || 0));
@@ -593,7 +613,7 @@ const fmtW = v => String(+v.toFixed(2));
 const fmtN = v => String(+v.toFixed(1));
 const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 function weekStart(d = new Date()) { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - dowIdx(x)); return x; }
-function sessionVolume(s) { let v = 0; for (const e of Object.values(s.ex || {})) for (const x of e.sets || []) if (x.done || filled(x)) v += num(x.w) * num(x.r); return v; }
+function sessionVolume(s) { let v = 0; for (const e of Object.values(s.ex || {})) if (!isAssist(e.v)) for (const x of e.sets || []) if (x.done || filled(x)) v += num(x.w) * num(x.r); return v; }
 function doneSets(s) { return Object.values(s.ex || {}).reduce((n, e) => n + (e.sets || []).filter(x => x.done).length, 0); }
 const totalSets = ex => ex.reduce((n, e) => n + e.sets, 0);
 const estMin = ex => Math.round(ex.reduce((n, e) => n + e.sets * ((e.rest[0] + e.rest[1]) / 2 + 45), 0) / 60 / 5) * 5;
@@ -674,8 +694,9 @@ function warmup(ex) {
 }
 // One quiet line: sets × reps · load · rest.
 const rxLine = (ex, s) => [`<b>${esc(ex.setsTxt.replace("-", "–"))} × ${esc(ex.reps.replace("-", "–"))}</b>`,
-  ex.pct ? `${esc(ex.load)} 1RM${targetW(ex) ? ` → <b>${fmtW(targetW(ex))} ${esc(s?.unit || S.unit)}</b>` : ""}` : ex.load ? `RPE ${esc(ex.load)}` : "",
+  ex.pct ? `${esc(ex.load)} 1RM${targetW(ex) ? ` → <b>${fmtW(targetW(ex))} ${esc(s?.unit || S.unit)}</b>` : ""}` : ex.load ? `RPE ${esc(ex.load)}${infoBtn(ex)}` : "",
   `rest ${fmtRest(ex.rest)}`].filter(Boolean).join(" · ");
+const infoBtn = (ex, v) => `<button class="info" type="button" data-act="rpeinfo" data-load="${esc(ex.pct ? "" : ex.load)}" data-pct="${ex.pct ? esc(ex.load) : ""}" data-assist="${isAssist(v) ? assistKind(v) : ""}" aria-label="What RPE means">!</button>`;
 const exTop = (i, n, ex, v, btn) => `<div class="exhead"><div style="min-width:0"><div class="exidx">${i + 1} of ${n}${ex.ss ? ` · superset ${ex.ss}` : ""}${v !== ex.name && !ex.wp ? " · swapped" : ""}</div><h3 class="exname">${esc(v)}</h3></div>${btn}</div>`;
 const loadChip = (ex, s) => ex.pct ? `<span class="chip"><b>${esc(ex.load)}</b> 1RM${targetW(ex) ? ` → <b>${fmtW(targetW(ex))}</b> ${esc(s?.unit || S.unit)}` : ""}</span>` : ex.load ? `<span class="chip">RPE <b>${esc(ex.load)}</b></span>` : "";
 
@@ -955,29 +976,37 @@ function exCard(s, pl, ex, i) {
   const tw = v === ex.name ? targetW(ex) : 0, wpNone = ex.wp && v === ex.name;
   const complete = sets.every(x => x.done);
   const repTxt = /^\d+$/.test(ex.reps) ? ex.reps : "";
-  const lastTxt = last ? `Last ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join(" · ")}</b>${last.s.ex[ex.id]?.ls ? ` · RPE ${esc(last.s.ex[ex.id].ls)}` : ""}` : "";
+  const asst = isAssist(v) ? assistKind(v) : "";
+  const lastTxt = last ? `Last ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join(" · ")}</b>${asst ? " (help × reps)" : ""}${last.s.ex[ex.id]?.ls ? ` · RPE ${esc(last.s.ex[ex.id].ls)}` : ""}` : "";
   const more = [ex.note ? `<p>${esc(ex.note)}</p>` : "",
     tw && !s.end && warmup(ex) ? `<p class="muted">Warm-up: <b>${esc(warmup(ex))}</b></p>` : "",
-    !last ? `<p class="muted">${ex.pct ? "Weight comes from your one-rep max." : "First time with this one. Pick a weight that lands on the target RPE."}</p>` : "",
+    !last && !asst ? `<p class="muted">${ex.pct ? "Weight comes from your one-rep max." : "First time with this one. Pick a weight that lands on the target RPE."}</p>` : "",
     wpNone ? "" : `<a class="watch" href="${videoFor(ex, v)}" target="_blank" rel="noopener">Watch how it's done ↗</a>`].join("");
   return `<article class="ex ${complete ? "complete" : ""}" style="--c:var(${pl.d.c})" data-ex="${ex.id}">
     ${exTop(i, pl.ex.length, ex, v, pl.legacy ? "" : `<button class="swap" type="button" data-act="swap" data-ex="${ex.id}" data-day="${pl.d.id}">${ICON.swap}${wpNone ? "Pick" : "Swap"}</button>`)}
     ${pl.legacy ? "" : `<p class="rx">${rxLine(ex, s)}</p>`}
     ${lastTxt ? `<p class="rx muted">${lastTxt}</p>` : ""}
+    ${asst ? `<p class="rx muted">${assistTip(asst, !last)}</p>` : ""}
     ${wpNone ? `<button class="cta quiet" type="button" data-act="swap" data-ex="${ex.id}" data-day="${pl.d.id}">Pick your ${ex.wp} body weak point exercise</button><p class="note" style="padding:0">The program has you choose 2–3 lagging body parts and stick with them. Your pick is remembered for every ${ex.wp} day.</p>` : ""}
     ${more && !pl.legacy ? `<details class="more"><summary>Notes${tw && !s.end && warmup(ex) ? ", warm-up" : ""} and video</summary>${more}</details>` : ""}
     ${ex.pct && !maxFor(ex.id) && !s.end ? maxField(ex) : ""}
     <div class="sets">
-      <div class="sethead"><span>Set</span><span>Weight</span><span>Reps</span><span>Done</span></div>
+      <div class="sethead"><span>Set</span><span>${asst ? "Help" : "Weight"}</span><span>Reps</span><span>Done</span></div>
       ${sets.map((x, k) => { const p = last?.sets?.[k], pw = tw ? fmtW(tw) : p?.w, pr = repTxt || p?.r || ex.reps;
         return `<div class="setrow ${x.done ? "on" : ""}"><span class="setno">${k + 1}</span>
-          <label class="fld" data-u="${esc(s.unit || S.unit)}"><input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} weight"></label>
+          <label class="fld" data-u="${esc(s.unit || S.unit)}${asst ? " help" : ""}"><input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} ${asst ? `help from the ${asst}` : "weight"}"></label>
           <label class="fld" data-u="reps"><input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps"></label>
           <button class="tick" type="button" data-act="tick" data-ex="${ex.id}" data-k="${k}" aria-pressed="${!!x.done}" aria-label="Set ${k + 1} done">${ICON.tick}</button></div>`; }).join("")}
     </div>
     <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Add set</button>${sets.length > n ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">Remove set</button>` : ""}
-      ${pl.legacy ? "" : `<label class="lsrpe">Last-set RPE<input inputmode="decimal" data-ls="${ex.id}" value="${esc(e?.ls)}" placeholder="${esc(ex.load && !ex.pct ? ex.load : "–")}" aria-label="RPE of your last set"></label>`}</div>
+      ${pl.legacy ? "" : `<div class="lsrpe"><span>Last-set RPE</span>${infoBtn(ex, v)}<input inputmode="decimal" data-ls="${ex.id}" value="${esc(e?.ls)}" placeholder="${esc(ex.load && !ex.pct ? ex.load : "–")}" aria-label="RPE of your last set"></div>`}</div>
   </article>`;
+}
+function assistTip(kind, first) {
+  const u = S.unit;
+  return kind === "band"
+    ? `Log the band's help in the ${u} box (the number printed on it, or 0 for none). ${first ? "Pick a band that gets you to the target reps at the RPE. " : ""}Hit every rep? Use a lighter band next time.`
+    : `Log the machine's help in the ${u} box. Less help is harder. ${first ? `Start around 25–30 ${u} below your bodyweight and adjust. ` : ""}Hit every rep? Take off one step (about ${u === "lb" ? 10 : 5} ${u}) next time.`;
 }
 function maxField(ex) {
   const base = MAXOF[ex.id] || ex.id, est = estMax(base);
@@ -1003,7 +1032,7 @@ function previewView(pv) {
     return `<article class="ex" style="--c:var(${d.c})">
       ${exTop(i, ex.length, x, v, `<button class="swap" type="button" data-act="swap" data-day="${d.id}" data-ex="${x.id}">${ICON.swap}${x.wp && v === x.name ? "Pick" : "Swap"}</button>`)}
       <p class="rx">${rxLine(x)}</p>
-      <p class="rx muted">${last ? `Last ${fmtDate(last.s.date)}: <b>${last.sets.filter(filled).map(y => `${esc(y.w || "–")}×${esc(y.r || "–")}`).join(" · ")}</b>` : x.pct && !tw ? "Add your one-rep max to see the weight." : "No log yet for this one."}</p>
+      <p class="rx muted">${last ? `Last ${fmtDate(last.s.date)}: <b>${last.sets.filter(filled).map(y => `${esc(y.w || "–")}×${esc(y.r || "–")}`).join(" · ")}</b>${isAssist(v) ? " (help × reps)" : ""}` : x.pct && !tw ? "Add your one-rep max to see the weight." : "No log yet for this one."}</p>
       ${x.note || !(x.wp && v === x.name) ? `<details class="more"><summary>Notes and video</summary>${x.note ? `<p>${esc(x.note)}</p>` : ""}${x.wp && v === x.name ? "" : `<a class="watch" href="${videoFor(x, v)}" target="_blank" rel="noopener">Watch how it's done ↗</a>`}</details>` : ""}</article>`; }).join("");
   const cur = atPos(Math.min(nextPos(), seqLen() - 1)), isNext = cur.wk === wk && cur.d === d.d;
   return `<div class="wohead" style="margin:0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)))"><div class="wrap">
@@ -1041,10 +1070,10 @@ function finish(s) {
   const pl = planFor(s), prs = [];
   for (const ex of pl.ex) {
     const e = s.ex[ex.id]; if (!e) continue;
-    const best = Math.max(0, ...e.sets.map(x => e1rm(num(x.w), num(x.r))));
+    const best = Math.max(0, ...e.sets.map(x => setScore(e.v, x)));
     if (!best) continue;
     let prev = 0, had = false;
-    for (const o of Object.values(S.sessions)) { if (o.id === s.id || !o.ex?.[ex.id] || o.ex[ex.id].v !== e.v) continue; had = true; prev = Math.max(prev, ...o.ex[ex.id].sets.map(x => e1rm(num(x.w), num(x.r)))); }
+    for (const o of Object.values(S.sessions)) { if (o.id === s.id || !o.ex?.[ex.id] || o.ex[ex.id].v !== e.v) continue; had = true; prev = Math.max(prev, ...o.ex[ex.id].sets.map(x => setScore(e.v, x))); }
     if (had && best > prev) prs.push(e.v);
   }
   const mins = Math.max(1, Math.round((s.end - s.start) / 60000));
@@ -1052,7 +1081,7 @@ function finish(s) {
   const nx = Object.entries(upcoming())[0];
   sheet(`<h3>${esc(pl.d.name)} done</h3>
     <div class="telemetry"><div><span class="k">Sets</span><span class="v">${doneSets(s)}<small>/${totalSets(pl.ex)}</small></span></div><div><span class="k">Volume</span><span class="v">${fmtK(sessionVolume(s))}<small>${esc(s.unit)}</small></span></div><div><span class="k">Time</span><span class="v">${mins > 240 ? "–" : mins}<small>min</small></span></div></div>
-    ${prs.length ? `<p class="note"><span class="pr">New best:</span> ${prs.map(esc).join(", ")}. Measured as estimated one-rep max, so more reps at the same weight counts too.</p>` : `<p class="note">Saved. Next time each exercise shows today's numbers to beat.</p>`}
+    ${prs.length ? `<p class="note"><span class="pr">New best:</span> ${prs.map(esc).join(", ")}. Measured as estimated one-rep max, so more reps at the same weight counts too${prs.some(isAssist) ? ". On assisted pull-ups, a best means less help" : ""}.</p>` : `<p class="note">Saved. Next time each exercise shows today's numbers to beat.</p>`}
     ${nx ? `<p class="note">Next up: <b style="color:var(--ink)">Week ${nx[1].wk} · ${esc(dayOf(nx[1].d).name)}</b> on ${fmtDate(nx[0])}.</p>` : s.wk ? `<p class="note">That was the last session of the program. Well done.</p>` : ""}
     <button class="cta" type="button" data-act="closesheet-home">Done</button>`);
 }
@@ -1095,7 +1124,7 @@ function planView() {
     return `<details class="panel" style="--c:var(${d.c})" ${here ? "open" : ""}>
       <summary class="row" style="cursor:pointer;list-style:none"><span class="stripe"></span><span class="main"><span class="t1" style="font-family:var(--display);font-size:21px;text-transform:uppercase;font-weight:700">${esc(d.name)}${here ? ` <span class="chip good" style="font-family:var(--mono);font-size:10px;vertical-align:middle">next</span>` : ""}</span><span class="t2">${esc(d.focus)}</span></span><span class="end">${totalSets(ex)} sets</span><span class="chev">⌄</span></summary>
       <div class="rows" style="border-top:1px solid var(--line)">${ex.map(x => { const v = variantOf(x);
-        return `<div class="row"><span class="main"><span class="t1">${x.ss ? x.ss + " · " : ""}${esc(v)}</span><span class="t2">${x.pct ? `${esc(x.load)} 1RM${targetW(x) && v === x.name ? ` (${fmtW(targetW(x))} ${esc(S.unit)})` : ""}` : `RPE ${esc(x.load)}`} · rest ${fmtRest(x.rest)}</span></span><span class="end">${esc(x.setsTxt.replace("-", "–"))}×${esc(x.reps.replace("-", "–"))}</span></div>`; }).join("")}
+        return `<div class="row"><span class="main"><span class="t1">${x.ss ? x.ss + " · " : ""}${esc(v)}</span><span class="t2">${x.pct ? `${esc(x.load)} 1RM${targetW(x) && v === x.name ? ` (${fmtW(targetW(x))} ${esc(S.unit)})` : ""}` : x.load ? `RPE ${esc(x.load)}${infoBtn(x)}` : ""} · rest ${fmtRest(x.rest)}</span></span><span class="end">${esc(x.setsTxt.replace("-", "–"))}×${esc(x.reps.replace("-", "–"))}</span></div>`; }).join("")}
         <button class="row" type="button" data-act="preview" data-day="${d.id}" data-wk="${wk}" style="color:var(--amber);font-weight:700"><span class="main">Open ${esc(d.name)}, week ${wk}</span><span class="chev">›</span></button></div>
     </details>`; }).join("");
   return `<section class="view">
@@ -1128,7 +1157,7 @@ function historyView() {
   if (!all.length) return `<section class="view"><div class="head"><div class="eyebrow">Progress</div><h1>Your log</h1></div>
     <div class="empty">Finished workouts and runs show up here, with a chart for each lift.<br><br>Start today's session from the Today tab. Every set saves as you type.</div></section>`;
   const exMap = new Map();
-  for (const s of all) for (const e of Object.values(s.ex || {})) if (e.sets.some(x => num(x.w) && num(x.r))) exMap.set(e.v, true);
+  for (const s of all) for (const e of Object.values(s.ex || {})) if (e.sets.some(x => num(x.r) && (num(x.w) || isAssist(e.v)))) exMap.set(e.v, true);
   const names = [...exMap.keys()].sort();
   if (!histEx || !exMap.has(histEx)) histEx = names[0] || null;
   const totalVol = all.reduce((n, s) => n + sessionVolume(s), 0);
@@ -1184,6 +1213,14 @@ function heatmap(all) {
     <p class="note" style="padding:0">${lifts} lift${lifts === 1 ? "" : "s"} and ${runs} run${runs === 1 ? "" : "s"} in 12 weeks. Each row is a week, colours match the training day. Tap a day to open it.</p></div>`;
 }
 function chart(name) {
+  if (isAssist(name)) {
+    const pts = Object.values(S.sessions).map(s => { const e = Object.values(s.ex || {}).find(e => e.v === name); const ws = (e?.sets || []).filter(x => num(x.r) > 0).map(x => num(x.w));
+      return ws.length ? { date: s.date, v: Math.min(...ws) } : null; }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+    if (!pts.length) return `<p class="note">Nothing logged for this one yet.</p>`;
+    const last = pts[pts.length - 1], first = pts[0], change = last.v - first.v;
+    return `${lineChart(pts, { fmt: v => String(Math.round(v)), invert: true, label: `Help used on ${name} over time` })}
+      <p class="note" style="padding:0">Help from the ${assistKind(name)} on your easiest-assisted set each session, in ${esc(S.unit)}. Lower is better, so the line climbing means you're getting stronger. Latest: <b style="color:var(--ink)">${Math.round(last.v)}</b>${pts.length > 1 ? `, <span style="color:${change <= 0 ? "var(--good)" : "var(--red)"}">${change > 0 ? "+" : ""}${change.toFixed(1)}</span> since ${fmtDate(first.date)}` : ""}.</p>`;
+  }
   const pts = series(name);
   if (!pts.length) return `<p class="note">No weights logged for this one yet.</p>`;
   const last = pts[pts.length - 1], first = pts[0], change = last.v - first.v;
@@ -1259,9 +1296,25 @@ function swapSheet(s, exId, dayId) {
   const cur = s?.ex[exId]?.v || variantOf(ex);
   const opt = (n, tag) => `<button class="opt" type="button" data-act="pick" data-ex="${exId}" data-day="${dayId}" data-name="${esc(n)}" aria-pressed="${n === cur}"><span style="flex:1;min-width:0">${esc(n)}</span><span class="eq">${esc(tag)}</span></button>`;
   const body = ex.wp ? WEAK[ex.wp].map(([part, list]) => `<div class="label">${esc(part)}</div><div class="opts">${list.map(n => opt(n, part)).join("")}</div>`).join("")
-    : `<div class="opts">${[[ex.name, "Program"], ...ex.swaps.map(n => [n, "Swap"])].map(([n, t]) => opt(n, t)).join("")}</div>`;
-  sheet(`<h3>${ex.wp ? `${ex.wp === "upper" ? "Upper" : "Lower"} body weak point` : "Swap exercise"}</h3><p class="note" style="padding:0">${ex.wp ? "Pick one exercise for the body part you most want to bring up. It's used on every weak-point slot until you change it." : "The program's own substitutes. Your choice sticks for future workouts, and each variation keeps its own history."}</p>
+    : `<div class="opts">${[[ex.name, "Program"], ...ex.swaps.map(n => [n, isAssist(n) ? (assistKind(n) === "band" ? "Band" : "Machine") : "Swap"])].map(([n, t]) => opt(n, t)).join("")}</div>`;
+  sheet(`<h3>${ex.wp ? `${ex.wp === "upper" ? "Upper" : "Lower"} body weak point` : "Swap exercise"}</h3><p class="note" style="padding:0">${ex.wp ? "Pick one exercise for the body part you most want to bring up. It's used on every weak-point slot until you change it." : "The program's own substitutes. Your choice sticks for future workouts, and each variation keeps its own history."}</p>${!ex.wp && ex.swaps.some(isAssist) ? `<p class="note" style="padding:0"><b style="color:var(--ink)">Can't do pull-ups yet?</b> Pick an Assisted (machine) or Banded version. You log how much help you get, and the goal is to need less of it each week.</p>` : ""}
     ${body}<button class="cta quiet" type="button" data-act="closesheet">Cancel</button>`);
+}
+
+// What RPE and the last-set target mean, for the (!) next to them.
+function rpeSheet({ load, pct, assist }) {
+  const t = +load || 0, left = 10 - t;
+  const rows = [[10, "Nothing left. You couldn't do another rep."], [9, "1 more rep was possible."], [8, "2 more reps were possible."], [7, "3 more reps were possible."], ["6", "4 or more left. Fairly easy."]];
+  const target = t ? `<p><b>This exercise: RPE ${t}.</b> Choose a weight so your last set ends with about ${left > 0 ? `${left} rep${left > 1 ? "s" : ""} left in the tank` : "nothing left: go to failure with good form"}. Earlier sets will feel a bit easier. That's expected.</p>`
+    : pct ? `<p><b>This exercise has no RPE target.</b> Its weight is set as ${esc(pct)} of your one-rep max, so just lift the weight the app shows. You can still note your last-set RPE. If it keeps coming out at 9 or 10, your one-rep max is probably set too high.</p>`
+    : `<p><b>This exercise has no RPE target.</b> Go by the reps and the notes. Logging your last-set RPE is optional.</p>`;
+  sheet(`<h3>What's RPE?</h3>
+    <div class="prose"><p>RPE is effort out of 10: how hard a set really was. The easiest way to judge it is how many more reps you could have done with good form.</p></div>
+    <div class="panel pad rpetab">${rows.map(([n, d]) => `<b class="${+n === t ? "on" : ""}">${n}</b><span>${d}</span>`).join("")}</div>
+    <div class="prose">${target}
+      <p><b>Last-set RPE</b> is where you type how hard your final set felt, right after you do it. The grey number in the box is the target. If you come in under it, add a little weight next time. If you go over it, keep the weight the same.</p>
+      ${assist ? `<p><b>On ${assist === "band" ? "banded" : "assisted"} pull-ups</b>, less help makes it harder. To raise the effort, use ${assist === "band" ? "a lighter band" : "less assistance"} instead of adding weight.</p>` : ""}</div>
+    <button class="cta quiet" type="button" data-act="closesheet">Got it</button>`);
 }
 
 // ================= Rest timer =================
@@ -1349,6 +1402,7 @@ document.addEventListener("click", ev => {
     case "closesheet": return closeSheet();
     case "closesheet-home": closeSheet(); open = null; tab = "today"; render(); return window.scrollTo(0, 0);
     case "swap": return swapSheet(s, b.dataset.ex, b.dataset.day);
+    case "rpeinfo": ev.preventDefault(); return rpeSheet(b.dataset);
     case "pick": {
       const ex = exById(b.dataset.day, b.dataset.ex, s), n = b.dataset.name;
       if (n === ex.name) delete S.swaps[ex.id]; else S.swaps[ex.id] = n;

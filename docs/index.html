@@ -330,6 +330,31 @@ details.more.wu .row { padding: 8px 0 !important; }
 </style>
 </head>
 <body>
+<script>
+// If the app fails to start, show what went wrong with a way out instead of a blank screen. Saved data is never touched here.
+window.addEventListener("error", function (e) { if (!window.gymlogStarted) gymlogFail(e.error || e.message); });
+function gymlogFail(err) {
+  if (document.getElementById("boot-fail")) return;
+  var msg = (err && err.message ? err.message + "\n" : "") + String(err && err.stack || err || "Unknown error"); msg = msg.slice(0, 800);
+  var raw = ""; try { raw = localStorage.getItem("gymlog-state") || ""; } catch (x) {}
+  var d = document.createElement("div"); d.id = "boot-fail";
+  d.setAttribute("style", "position:fixed;inset:0;z-index:99;overflow:auto;padding:calc(env(safe-area-inset-top) + 24px) 20px 24px;background:#12172e;color:#fff;font:15px/1.45 -apple-system,system-ui,sans-serif");
+  d.innerHTML = '<h2 style="margin:0 0 8px;font-size:20px">Gym Log couldn\'t start</h2><p style="margin:0 0 14px;opacity:.8">Your workouts are still saved on this phone. Try Reload first. If it keeps happening, save a copy of your data and send a screenshot of this screen.</p>'
+    + '<button id="bf-reload" style="display:block;width:100%;padding:13px;margin:0 0 10px;border:0;border-radius:12px;background:#3d6cf4;color:#fff;font:600 16px system-ui">Reload</button>'
+    + (raw ? '<button id="bf-save" style="display:block;width:100%;padding:13px;margin:0 0 16px;border:0;border-radius:12px;background:#ffffff22;color:#fff;font:600 16px system-ui">Save a copy of my data</button>' : '')
+    + '<pre style="white-space:pre-wrap;word-break:break-word;font:12px/1.4 ui-monospace,monospace;opacity:.7;margin:0"></pre>';
+  d.querySelector("pre").textContent = msg;
+  (document.body || document.documentElement).appendChild(d);
+  d.querySelector("#bf-reload").onclick = function () { location.reload(); };
+  var sv = d.querySelector("#bf-save");
+  if (sv) sv.onclick = function () {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([raw], { type: "application/json" }));
+    a.download = "gym-log-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+</script>
 <main id="main"><div class="wrap" id="view"></div></main>
 
 <div class="rest" id="rest" hidden>
@@ -1397,7 +1422,7 @@ document.addEventListener("change", ev => {
   }
 });
 
-paintBar(); render();
+try { paintBar(); render(); window.gymlogStarted = true; } catch (e) { gymlogFail(e); }
 loadRunna();
 // The Monday ntfy reminder links here with ?weigh=1.
 if (/[?&]weigh=1/.test(location.search)) { history.replaceState(null, "", location.pathname); weighSheet(); }

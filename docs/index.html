@@ -742,6 +742,8 @@ function coachCards() {
     const cl = clash(dd); if (!cl?.hard) continue;
     out.push(`<div class="alert hard"><b>${esc(dayOf(p.d).name)} · ${dd === today ? "today" : "tomorrow"}</b><span>${esc(cl.text)}</span></div>`);
   }
+  if (backupDue()) out.push(`<div class="alert"><b>Back up your log</b><span>${S.backupAt ? `Last backup ${daysBetween(iso(new Date(S.backupAt)), today)} days ago.` : "No backup yet."} Your maxes and workouts live only in this app. Deleting it from your home screen erases them.</span>
+    <div class="btnrow" style="margin-top:6px;grid-template-columns:1fr 1fr"><button class="sbtn" type="button" data-act="export">Save backup</button><button class="sbtn" type="button" data-act="backuplater">Later</button></div></div>`);
   if (!bwThisWeek()) out.push(`<div class="alert"><b>Weekly weigh-in</b><span>Once a week, same morning routine: after the bathroom, before breakfast.</span>${bwForm()}</div>`);
   return out.join("");
 }
@@ -1277,8 +1279,9 @@ function setupView() {
     <div class="group"><div class="label">Exercise swaps</div><div class="panel pad prose"><p>${Object.keys(S.swaps).length ? `${Object.keys(S.swaps).length} exercises swapped or picked (weak points count too).` : "No swaps yet. Tap Swap on any exercise to use one of the program's substitutes."}</p>
       ${Object.keys(S.swaps).length ? `<button class="sbtn" type="button" data-act="resetswaps" style="justify-self:start">Go back to the program's exercises</button>` : ""}</div></div>
     <div class="group"><div class="label">Backup</div><div class="panel pad" style="display:grid;gap:10px">
-      <p class="note" style="padding:0">Your log lives on this phone only. Save a backup file now and then, or before you switch phones.</p>
-      <div class="btnrow"><button class="sbtn" type="button" data-act="export">Save backup</button><label class="sbtn" style="text-align:center;cursor:pointer">Restore backup<input type="file" accept="application/json,.json" id="import" hidden></label></div>
+      <p class="note" style="padding:0">Your log and maxes live only inside this app. Deleting it from your home screen erases them, so keep a backup. ${S.backupAt ? `Last backup: ${esc(fmtDate(iso(new Date(S.backupAt))))}.` : "<b>No backup yet.</b>"}</p>
+      <div class="btnrow" style="grid-template-columns:1fr 1fr"><button class="sbtn" type="button" data-act="export">Save backup file</button><label class="sbtn" style="text-align:center;cursor:pointer">Restore from file<input type="file" accept="application/json,.json" id="import" hidden></label></div>
+      <div class="btnrow" style="grid-template-columns:1fr 1fr"><button class="sbtn" type="button" data-act="copybackup">Copy as text</button><button class="sbtn" type="button" data-act="pastebackup">Restore from text</button></div>
       ${pendingDel.has("ALL") ? `<div class="btnrow"><button class="sbtn danger" type="button" data-act="wipeyes">Yes, erase everything</button><button class="sbtn" type="button" data-act="wipeno">Keep my log</button></div>` : `<button class="sbtn danger" type="button" data-act="wipe">Erase all data</button>`}
     </div></div>
     <p class="note">Install: open this page in Safari, tap Share, then Add to Home Screen.</p>
@@ -1350,6 +1353,48 @@ function tickClock() {
 setInterval(tickClock, 15000);
 
 // ================= Events =================
+// ================= Backups =================
+// Everything lives in this app's storage on the phone, so nudge a backup once a week when there's something to lose.
+const hasData = () => Object.keys(S.maxes || {}).length > 0 || Object.keys(S.bw || {}).length > 0 || Object.values(S.sessions).some(s => !byId(s.day).run && isLogged(s));
+const backupDue = () => hasData() && Date.now() > (S.backupSnooze || 0) && Date.now() - (S.backupAt || 0) > 7 * 864e5;
+const backupText = () => JSON.stringify(S);
+function backedUp() { S.backupAt = Date.now(); delete S.backupSnooze; save(true); render(); }
+function exportBackup() {
+  const name = `gym-log-${todayISO()}.json`, blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
+  let file = null; try { file = new File([blob], name, { type: "application/json" }); } catch (e) {}
+  if (file && navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file], title: "Gym Log backup" }).then(() => { backedUp(); toast("Backup saved"); }).catch(() => {});
+    return;
+  }
+  const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+  backedUp();
+}
+function copyBackup() {
+  const t = backupText();
+  const done = () => { backedUp(); toast("Copied. Paste it into Notes or a message to yourself."); };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(t).then(done).catch(() => showBackupText(t)); else showBackupText(t);
+}
+function showBackupText(t) {
+  sheet(`<h3>Your backup</h3><p class="note" style="padding:0">Select all and copy, then paste it into Notes.</p><textarea id="bk-out" readonly rows="8" style="width:100%;font:12px ui-monospace,monospace">${esc(t)}</textarea><button class="cta quiet" type="button" data-act="closesheet">Close</button>`);
+  setTimeout(() => { const a = document.getElementById("bk-out"); a?.focus(); a?.select(); }, 50);
+  backedUp();
+}
+function pasteSheet() {
+  sheet(`<h3>Restore from text</h3><p class="note" style="padding:0">Paste a backup you copied earlier. It replaces what's in the app now.</p><textarea id="bk-in" rows="8" placeholder="Paste here" style="width:100%;font:12px ui-monospace,monospace"></textarea>
+    <div class="btnrow"><button class="cta quiet" type="button" data-act="closesheet">Cancel</button><button class="cta" type="button" data-act="pasterestore">Restore</button></div>`);
+}
+// Restores a backup (or loads a program file). Throws if the text isn't one.
+function restoreFrom(t, programOnly) {
+  const d = JSON.parse(t);
+  if (d?.format === "gymlog-program") {
+    const p = cleanProgram(d); if (!p) throw new Error();
+    S.program = p; useProgram(p); save(true); toast(`Loaded ${p.name || "program"}: ${WEEKS} weeks`); return render();
+  }
+  if (programOnly || !d || typeof d.sessions !== "object") throw new Error();
+  const keep = S.program;
+  S = tidy(d); if (!S.program && keep) S.program = keep; useProgram(S.program || cleanProgram(BUILTIN));
+  save(true); { const n = Object.keys(S.sessions).length, m = Object.keys(S.maxes).length; toast(`Restored ${n} session${n === 1 ? "" : "s"} and ${m} max${m === 1 ? "" : "es"}`); }; render();
+}
 function saveMax(id, v) {
   v = String(v ?? "").trim().replace(",", ".");
   if (num(v) > 0) S.maxes[id] = String(num(v)); else delete S.maxes[id];
@@ -1431,12 +1476,15 @@ document.addEventListener("click", ev => {
     case "theme": setTheme(b.dataset.t); return render();
     case "unit": S.unit = b.dataset.u; if (S.active && S.sessions[S.active] && !doneSets(S.sessions[S.active])) S.sessions[S.active].unit = S.unit; save(); return render();
     case "resetswaps": S.swaps = {}; save(); toast("Back to the program's exercises"); return render();
-    case "export": {
-      const blob = new Blob([JSON.stringify(S, null, 1)], { type: "application/json" });
-      const file = new File([blob], `gym-log-${todayISO()}.json`, { type: "application/json" });
-      if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file], title: "Gym Log backup" }).catch(() => {}); return; }
-      const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = file.name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return;
+    case "export": return exportBackup();
+    case "copybackup": return copyBackup();
+    case "pastebackup": return pasteSheet();
+    case "pasterestore": {
+      const t = document.getElementById("bk-in")?.value.trim();
+      try { restoreFrom(t); closeSheet(); } catch (e) { toast("That isn't a Gym Log backup. Paste the whole text."); }
+      return;
     }
+    case "backuplater": S.backupSnooze = Date.now() + 3 * 864e5; save(true); return render();
     case "runs": go("history"); return document.getElementById("running")?.scrollIntoView({ block: "start" });
     case "rmetric": runMetric = b.dataset.m; return render();
     case "wipe": pendingDel.add("ALL"); return render();
@@ -1462,20 +1510,11 @@ document.addEventListener("change", ev => {
   if (el.id === "hist-ex") { histEx = el.value; return render(); }
   if (el.id === "race-date") { if (el.value) S.race = el.value; else delete S.race; save(); return render(); }
   if ((el.id === "import" || el.id === "prog-import") && el.files[0]) {
-    el.files[0].text().then(t => {
-      const d = JSON.parse(t);
-      if (d?.format === "gymlog-program") {
-        const p = cleanProgram(d); if (!p) throw new Error();
-        S.program = p; useProgram(p); save(true); toast(`Loaded ${p.name || "program"}: ${WEEKS} weeks`); el.value = ""; return render();
-      }
-      if (el.id === "prog-import" || !d || typeof d.sessions !== "object") throw new Error();
-      const keep = S.program;
-      S = tidy(d); if (!S.program && keep) S.program = keep; useProgram(S.program || cleanProgram(BUILTIN));
-      save(true); toast(`Restored ${Object.keys(S.sessions).length} sessions`); render();
-    }).catch(() => toast(el.id === "prog-import" ? "That file isn't a Gym Log program file." : "That file isn't a Gym Log backup."));
+    el.files[0].text().then(t => { el.value = ""; restoreFrom(t, el.id === "prog-import"); }).catch(() => toast(el.id === "prog-import" ? "That file isn't a Gym Log program file." : "That file isn't a Gym Log backup."));
   }
 });
 
+try { navigator.storage?.persist?.().catch(() => {}); } catch (e) {}
 try { paintBar(); render(); window.gymlogStarted = true; } catch (e) { gymlogFail(e); }
 loadRunna();
 // The Monday ntfy reminder links here with ?weigh=1.

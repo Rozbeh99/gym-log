@@ -198,6 +198,7 @@ button.wd { cursor: pointer; }
 .setrow input::placeholder { color: var(--faint); font-weight: 500; }
 .fld { display: flex; align-items: baseline; gap: 4px; background: var(--panel-2); border: 1.5px solid transparent; border-radius: 10px; padding: 7px 10px; cursor: text; }
 .fld::after { content: attr(data-u); font-size: 12px; font-weight: 600; color: var(--muted); flex: none; }
+.fld.parts input { font-size: 16px; letter-spacing: -.02em; }
 .fld:focus-within { border-color: var(--accent); background: var(--panel); }
 .setrow.on .fld { background: var(--soft); }
 .setrow.on .setno { color: var(--accent); }
@@ -602,6 +603,11 @@ const dowOf = dISO => dowIdx(new Date(dISO + "T12:00:00"));
 const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
 const fmtRest = ([a, b]) => !b ? "none" : b < 120 && a === b ? b + " s" : a === b ? a / 60 + " min" : `${a / 60}–${b / 60} min`;
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
+// Reps can come in parts for drop sets, 21s, myo-reps etc: "7/7/5". Bests use the first part (the top-weight set), volume uses the total.
+const repParts = v => String(v ?? "").split("/").map(num).filter(n => n > 0);
+const repsTotal = v => repParts(v).reduce((a, b) => a + b, 0);
+const normReps = v => String(v ?? "").trim().replace(/\s*[\/+.,\s]\s*/g, "/").replace(/\/{2,}/g, "/").replace(/^\//, "");
+const isParts = ex => /\//.test(ex.reps) || /drop|myo|partial|21s/i.test(ex.note || "");
 const setScore = (name, x) => isAssist(name) ? (num(x.r) > 0 ? 1000 - num(x.w) + Math.min(num(x.r), 30) / 100 : 0) : e1rm(num(x.w), num(x.r));
 const e1rm = (w, r) => w > 0 && r > 0 ? w * (1 + Math.min(r, 15) / 30) : 0;
 const variantOf = ex => S.swaps[ex.id] || ex.name;
@@ -613,7 +619,7 @@ const fmtW = v => String(+v.toFixed(2));
 const fmtN = v => String(+v.toFixed(1));
 const fmtK = v => v >= 10000 ? (v / 1000).toFixed(1) + "k" : Math.round(v).toLocaleString();
 function weekStart(d = new Date()) { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - dowIdx(x)); return x; }
-function sessionVolume(s) { let v = 0; for (const e of Object.values(s.ex || {})) if (!isAssist(e.v)) for (const x of e.sets || []) if (x.done || filled(x)) v += num(x.w) * num(x.r); return v; }
+function sessionVolume(s) { let v = 0; for (const e of Object.values(s.ex || {})) if (!isAssist(e.v)) for (const x of e.sets || []) if (x.done || filled(x)) v += num(x.w) * repsTotal(x.r); return v; }
 function doneSets(s) { return Object.values(s.ex || {}).reduce((n, e) => n + (e.sets || []).filter(x => x.done).length, 0); }
 const totalSets = ex => ex.reduce((n, e) => n + e.sets, 0);
 const estMin = ex => Math.round(ex.reduce((n, e) => n + e.sets * ((e.rest[0] + e.rest[1]) / 2 + 45), 0) / 60 / 5) * 5;
@@ -977,8 +983,9 @@ function exCard(s, pl, ex, i) {
   const lastSets = last ? last.sets.filter(filled) : [];
   const tw = v === ex.name ? targetW(ex) : 0, wpNone = ex.wp && v === ex.name;
   const complete = sets.every(x => x.done);
-  const repTxt = /^\d+$/.test(ex.reps) ? ex.reps : "";
+  const repTxt = /^\d+(\/\d+)*$/.test(ex.reps) ? ex.reps : "";
   const asst = isAssist(v) ? assistKind(v) : "";
+  const parts = isParts(ex) && !asst;
   const lastTxt = last ? `Last ${fmtDate(last.s.date)}: <b>${lastSets.map(x => `${esc(x.w || "–")}×${esc(x.r || "–")}`).join(" · ")}</b>${asst ? " (help × reps)" : ""}${last.s.ex[ex.id]?.ls ? ` · RPE ${esc(last.s.ex[ex.id].ls)}` : ""}` : "";
   const more = [ex.note ? `<p>${esc(ex.note)}</p>` : "",
     tw && !s.end && warmup(ex) ? `<p class="muted">Warm-up: <b>${esc(warmup(ex))}</b></p>` : "",
@@ -989,6 +996,7 @@ function exCard(s, pl, ex, i) {
     ${pl.legacy ? "" : `<p class="rx">${rxLine(ex, s)}</p>`}
     ${lastTxt ? `<p class="rx muted">${lastTxt}</p>` : ""}
     ${asst ? `<p class="rx muted">${assistTip(asst, !last)}</p>` : ""}
+    ${parts && !s.end ? `<p class="rx muted">Log each part in the reps box, like <b>7/7/5</b>. The dot key types the slash.</p>` : ""}
     ${wpNone ? `<button class="cta quiet" type="button" data-act="swap" data-ex="${ex.id}" data-day="${pl.d.id}">Pick your ${ex.wp} body weak point exercise</button><p class="note" style="padding:0">The program has you choose 2–3 lagging body parts and stick with them. Your pick is remembered for every ${ex.wp} day.</p>` : ""}
     ${more && !pl.legacy ? `<details class="more"><summary>Notes${tw && !s.end && warmup(ex) ? ", warm-up" : ""} and video</summary>${more}</details>` : ""}
     ${ex.pct && !maxFor(ex.id) && !s.end ? maxField(ex) : ""}
@@ -997,7 +1005,7 @@ function exCard(s, pl, ex, i) {
       ${sets.map((x, k) => { const p = last?.sets?.[k], pw = tw ? fmtW(tw) : p?.w, pr = repTxt || p?.r || ex.reps;
         return `<div class="setrow ${x.done ? "on" : ""}"><span class="setno">${k + 1}</span>
           <label class="fld" data-u="${esc(s.unit || S.unit)}${asst ? " help" : ""}"><input inputmode="decimal" id="w-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="w" value="${esc(x.w)}" placeholder="${esc(pw || "–")}" aria-label="Set ${k + 1} ${asst ? `help from the ${asst}` : "weight"}"></label>
-          <label class="fld" data-u="reps"><input inputmode="numeric" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps"></label>
+          <label class="fld${parts ? " parts" : ""}" data-u="reps"><input inputmode="decimal" autocomplete="off" id="r-${ex.id}-${k}" data-ex="${ex.id}" data-k="${k}" data-f="r" value="${esc(x.r)}" placeholder="${esc(pr || "–")}" aria-label="Set ${k + 1} reps"></label>
           <button class="tick" type="button" data-act="tick" data-ex="${ex.id}" data-k="${k}" aria-pressed="${!!x.done}" aria-label="Set ${k + 1} done">${ICON.tick}</button></div>`; }).join("")}
     </div>
     <div class="mini"><button class="ghost" type="button" data-act="addset" data-ex="${ex.id}">+ Add set</button>${sets.length > n ? `<button class="ghost" type="button" data-act="rmset" data-ex="${ex.id}">Remove set</button>` : ""}
@@ -1460,7 +1468,7 @@ document.addEventListener("click", ev => {
       if (x.done) {
         const w = document.getElementById(`w-${b.dataset.ex}-${k}`), r = document.getElementById(`r-${b.dataset.ex}-${k}`);
         if (!filled({ w: x.w }) && w.placeholder !== "–") { x.w = w.placeholder; w.value = x.w; }
-        if (!x.r && /^\d+$/.test(r.placeholder)) { x.r = r.placeholder; r.value = x.r; }
+        if (!x.r && /^\d+(\/\d+)*$/.test(r.placeholder)) { x.r = r.placeholder; r.value = x.r; }
         const ex = planFor(s).ex.find(q => q.id === b.dataset.ex);
         if (!s.end) { if (ex.rest[0] > 0) startRest(ex.rest[0], e.v); else toast(`Straight into the next exercise (superset), then rest`); }
       }
@@ -1496,6 +1504,7 @@ document.addEventListener("input", ev => {
   const el = ev.target, s = open && S.sessions[open];
   if (s && el.dataset.f) {
     const e = exEntry(s, el.dataset.ex), k = +el.dataset.k;
+    if (el.dataset.f === "r") { const t = normReps(el.value); if (t !== el.value.trim()) el.value = t; (e.sets[k] || (e.sets[k] = {})).r = t.replace(/\/$/, ""); return save(); }
     (e.sets[k] || (e.sets[k] = {}))[el.dataset.f] = el.value.trim().replace(",", ".");
     return save();
   }

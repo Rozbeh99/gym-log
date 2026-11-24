@@ -1,16 +1,6 @@
 {
- "changed": "2026-11-06T01:36:24Z",
+ "changed": "2026-11-24T02:16:34Z",
  "runs": [
-  {
-   "date": "2026-10-26",
-   "title": "Your First Walk Run",
-   "desc": "5 mins walking warm up\n\n3 reps of:\n• 3 mins at a conversational pace, 2 mins walking\n\n5 mins walking cool down",
-   "id": "COMPLETED_PLAN_WORKOUT-BEF94052-7FF6-4FB7-8F65-2CB321BDBEEB",
-   "link": "https://club.runna.com/n9Tx/activities?activityId=BEF94052-7FF6-4FB7-8F65-2CB321BDBEEB",
-   "done": true,
-   "dist": "2.75",
-   "time": "27.7"
-  },
   {
    "date": "2026-10-29",
    "title": "Walk Run",

@@ -499,7 +499,32 @@ const FOCUS_PICKS = {
 const FOCUS_DAYS = { 1: { add: "fquads" }, 2: { wp: "fchest", add: "fbiceps" }, 3: { wp: "fquads2" }, 4: { wp: "flats" }, 6: { wp: "fbiceps" } };
 let FOCUS_EX = {};
 const focusOn = () => S.prog.focus !== 0;
+// Lower 2 ends with calves and abs instead of its weak-point slot (the extra leg press). Rozbeh's call.
+// Calves alternate with Lower 1: seated when Lower 1 stands, standing when Lower 1 sits.
+const L2_END = wk => {
+  const pick = (id, sets, reps, load) => {
+    if (!EX[id]) return null;
+    const own = PROG[wk - 1]?.flat().find(r => r[0] === id);
+    return own ? own.slice() : [id, sets, reps, load, 60, 120, ""];
+  };
+  const hard = wk % 3 === 0 ? "9" : "8";
+  const seatedL1 = (PROG[wk - 1]?.[0] || []).some(r => /seated/i.test(EX[r[0]]?.[0] || "") && /calf/i.test(EX[r[0]]?.[0] || ""));
+  const calf = seatedL1 ? pick("calf", "3", "10", hard) : pick("ctseatedcalf", "3", "15", hard);
+  if (calf && !seatedL1 && calf[1] === "4") calf.splice(1, 3, "3", "15", hard);
+  if (calf) calf[6] ||= seatedL1 ? "Full stretch at the bottom, pause for a second" : "Pause at the bottom, squeeze hard at the top";
+  const abs = pick("wcrunch", "3", "10", hard === "9" ? "8" : "7");
+  return [calf, abs].filter(Boolean);
+};
 function dayRows(wk, dn, s) {
+  const rows = baseRows(wk, dn, s);
+  if (dn !== 3 || !PROG[wk - 1]) return rows;
+  // A Lower 2 already logged with its weak-point slot keeps that layout.
+  if (Object.keys(s?.ex || {}).some(k => k === "lowerwp" || k === "fquads2")) return rows;
+  const out = rows.filter(r => r[0] !== "lowerwp" && r[0] !== "fquads2");
+  for (const r of L2_END(wk)) if (!out.some(x => x[0] === r[0])) out.push(r);
+  return out;
+}
+function baseRows(wk, dn, s) {
   const rows = PROG[wk - 1]?.[dn - 1] || [], f = FOCUS_DAYS[dn];
   // A logged session keeps the layout it was done with: plain weak-point slot, or focus picks.
   const keys = Object.keys(s?.ex || {}), plain = keys.some(k => k === "upperwp" || k === "lowerwp"), focused = keys.some(k => k in FOCUS_EX);
@@ -1327,7 +1352,7 @@ function setupView() {
       <div class="panel setline"><span>Lift days a week</span><div class="seg">${[6, 5, 4, 3].map(n => `<button type="button" data-act="split" data-v="${n}" aria-pressed="${S.prog.split == n}">${n}</button>`).join("")}</div></div>
       <p class="note">${esc(SPLIT_TXT[S.prog.split] || SPLIT_TXT[4])}</p>
       <div class="panel setline"><span>Focus muscles</span><div class="seg"><button type="button" data-act="focus" data-v="1" aria-pressed="${focusOn()}">On</button><button type="button" data-act="focus" data-v="0" aria-pressed="${!focusOn()}">Off</button></div></div>
-      <p class="note">${focusOn() ? "Chest, lats, biceps and quads come first. The weak-point slots are set to them (Upper 1 chest, Upper 2 lats, Lower 2 quads), and Upper 1 and Lower 1 get one extra finisher for biceps and quads. Swap still offers other picks for the same muscle." : "Off: the program as written, with you picking the weak-point exercise yourself."}</p>
+      <p class="note">${focusOn() ? "Chest, lats, biceps and quads come first. The weak-point slots are set to them (Upper 1 chest, Upper 2 lats), and Upper 1 and Lower 1 get one extra finisher for biceps and quads. Swap still offers other picks for the same muscle." : "Off: the program as written, with you picking the weak-point exercise yourself."}</p>
       <div class="panel pad" style="display:grid;gap:10px"><span>Days you lift</span><div class="chips">${WD.map((w, i) => `<button class="gear" type="button" data-act="liftday" data-i="${i}" aria-pressed="${!!S.prog.days[i]}">${w}</button>`).join("")}</div>
         <p class="note" style="padding:0">Workouts go in order onto these days. Miss one and it waits for your next lift day. Changing the split above picks days around your Monday and Friday runs.</p></div>
       <div class="panel pad" style="display:grid;gap:10px"><span>Next workout: <b>week ${cur.wk}, ${esc(dayOf(cur.d).name)}</b> (${Math.min(pos, seqLen())} of ${seqLen()} done)</span>

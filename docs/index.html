@@ -438,9 +438,10 @@ const pctToRpe = l => /%$/.test(l) ? (parseFloat(l) >= 85 ? "9" : "8") : l;
 // Rozbeh's other picks, by the program's exercise name. Loads, sets and reps stay as written.
 // maxOf: a % lift that now runs off another lift's one-rep max.
 const MY_PICKS = {
-  "Front Squat": { name: "Quad-Focused Back Squat", photo: "", video: "", maxOf: "squat",
-    swaps: ["Quad-Focused Leg Press", "Heel-Elevated Goblet Squat", "Hack Squat"],
-    note: "High bar, feet about hip-width, heels on small plates or a wedge. Sit straight down and let your knees travel forward, torso upright" },
+  // A machine has no one-rep max, so its % loads become an RPE target of similar effort.
+  "Front Squat": { name: "Quad-Focused Hack Squat", photo: "", video: "", rpe: l => ({ "65%": "7", "67.5%": "8", "70%": "9" })[l] || pctToRpe(l),
+    swaps: ["Quad-Focused Leg Press", "Heel-Elevated Goblet Squat", "Quad-Focused Back Squat"],
+    note: "Feet low and fairly close on the platform, go as deep as you can and let your knees travel well past your toes. Control the way down" },
   "Barbell Hip Thrust": { name: "Belt Machine Hip Thrust", photo: "", video: "",
     swaps: ["Barbell Hip Thrust", "Glute Bridge", "DB 45° Hyperextension"] },
 };
@@ -453,7 +454,7 @@ function dropDeadlifts(p) {
     renamed[m[0]] = r.name; picked.add(id);
     p.exercises[id] = [r.name, r.photo, r.swaps.slice(), r.video];
     if (r.maxOf && p.exercises[r.maxOf]) MAXOF[id] = r.maxOf;
-    if (r.note) fix[id] = { keep: true, note: r.note };
+    if (r.note || r.rpe) fix[id] = { keep: true, note: r.note, rpe: r.rpe };
   }
   // Other exercises that listed the old lift as a swap now offer the new pick instead.
   for (const [id, m] of Object.entries(p.exercises)) if (!picked.has(id)) m[2] = [...new Set(m[2].map(n => renamed[n] || n))].filter(n => n !== m[0]);
@@ -466,7 +467,7 @@ function dropDeadlifts(p) {
   p.weeks = p.weeks.map(w => w.map(d => d.map(row => {
     const r = fix[row[0]]; if (!r) return row;
     const out = row.slice();
-    if (r.keep) { out[6] = r.note; return out; } out[2] = r.reps || row[2]; out[3] = pctToRpe(row[3]);
+    if (r.keep) { if (r.note) out[6] = r.note; if (r.rpe) out[3] = r.rpe(row[3]); return out; } out[2] = r.reps || row[2]; out[3] = pctToRpe(row[3]);
     if (r.rest) { out[4] = r.rest[0]; out[5] = r.rest[1]; }
     out[6] = r.note; return out;
   })));
@@ -518,7 +519,7 @@ const importCard = () => `<div class="hero" style="--c:var(--amber)"><div><div c
 const DAYDEF = [
   { id: "l1", d: 1, name: "Lower 1", c: "--d1", focus: "Squat · hinge · quads · calves · abs" },
   { id: "u1", d: 2, name: "Upper 1", c: "--d2", focus: "Bench press · lats · rows · delts" },
-  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "RDL · quad-focused squat · glutes · hamstrings" },
+  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "RDL · hack squat · glutes · hamstrings" },
   { id: "u2", d: 4, name: "Upper 2", c: "--d4", focus: "Overhead press · pull-ups · chest · arms" },
   { id: "l3", d: 5, name: "Lower 3", c: "--d5", focus: "Squat volume · lunges · glutes · abs" },
   { id: "u3", d: 6, name: "Upper 3", c: "--d6", focus: "Incline press · pull-ups · back · triceps" },

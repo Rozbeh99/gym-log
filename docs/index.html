@@ -424,7 +424,7 @@ function addAssisted() {
 // real deadlifts are taken out of every swap and weak-point list. This runs on the built-in program and on
 // imported files alike. Rows keep their exercise id, so sessions already logged keep showing what was done.
 const DEADLIFT = { test: n => /dead-?lift|block pull|rack pull/i.test(n || "") && !/stiff|romanian|\bRDL|single-leg/i.test(n || "") };
-const RDL = { name: "Barbell RDL", photo: "", video: "", swaps: ["Dumbbell RDL", "Barbell 45° Hyperextension", "Barbell Hip Thrust"],
+const RDL = { name: "Barbell RDL", photo: "", video: "", swaps: ["Dumbbell RDL", "Barbell 45° Hyperextension", "Belt Machine Hip Thrust"],
   note: "Soft knees, push your hips back until you feel a deep hamstring stretch, bar close to your legs, back neutral" };
 const NO_DL = {
   // Lower 2's main lift: same sets, 8 reps by effort instead of 5 at a % of your deadlift max.
@@ -435,10 +435,28 @@ const NO_DL = {
 const NO_DL_OTHER = { ...RDL };
 // A % of one-rep max means nothing on the new lift, so it becomes an RPE target of similar effort.
 const pctToRpe = l => /%$/.test(l) ? (parseFloat(l) >= 85 ? "9" : "8") : l;
+// Rozbeh's other picks, by the program's exercise name. Loads, sets and reps stay as written.
+// maxOf: a % lift that now runs off another lift's one-rep max.
+const MY_PICKS = {
+  "Front Squat": { name: "Quad-Focused Back Squat", photo: "", video: "", maxOf: "squat",
+    swaps: ["Quad-Focused Leg Press", "Heel-Elevated Goblet Squat", "Hack Squat"],
+    note: "High bar, feet about hip-width, heels on small plates or a wedge. Sit straight down and let your knees travel forward, torso upright" },
+  "Barbell Hip Thrust": { name: "Belt Machine Hip Thrust", photo: "", video: "",
+    swaps: ["Barbell Hip Thrust", "Glute Bridge", "DB 45° Hyperextension"] },
+};
 function dropDeadlifts(p) {
   if (!p) return p;
   p = JSON.parse(JSON.stringify(p));
-  const fix = {};
+  const fix = {}, renamed = {}, picked = new Set();
+  for (const [id, m] of Object.entries(p.exercises)) {
+    const r = MY_PICKS[m[0]]; if (!r) continue;
+    renamed[m[0]] = r.name; picked.add(id);
+    p.exercises[id] = [r.name, r.photo, r.swaps.slice(), r.video];
+    if (r.maxOf && p.exercises[r.maxOf]) MAXOF[id] = r.maxOf;
+    if (r.note) fix[id] = { keep: true, note: r.note };
+  }
+  // Other exercises that listed the old lift as a swap now offer the new pick instead.
+  for (const [id, m] of Object.entries(p.exercises)) if (!picked.has(id)) m[2] = [...new Set(m[2].map(n => renamed[n] || n))].filter(n => n !== m[0]);
   for (const [id, m] of Object.entries(p.exercises)) {
     if (DEADLIFT.test(m[0])) {
       const r = fix[id] = NO_DL[id] || NO_DL_OTHER;
@@ -447,7 +465,8 @@ function dropDeadlifts(p) {
   }
   p.weeks = p.weeks.map(w => w.map(d => d.map(row => {
     const r = fix[row[0]]; if (!r) return row;
-    const out = row.slice(); out[2] = r.reps || row[2]; out[3] = pctToRpe(row[3]);
+    const out = row.slice();
+    if (r.keep) { out[6] = r.note; return out; } out[2] = r.reps || row[2]; out[3] = pctToRpe(row[3]);
     if (r.rest) { out[4] = r.rest[0]; out[5] = r.rest[1]; }
     out[6] = r.note; return out;
   })));
@@ -499,7 +518,7 @@ const importCard = () => `<div class="hero" style="--c:var(--amber)"><div><div c
 const DAYDEF = [
   { id: "l1", d: 1, name: "Lower 1", c: "--d1", focus: "Squat · hinge · quads · calves · abs" },
   { id: "u1", d: 2, name: "Upper 1", c: "--d2", focus: "Bench press · lats · rows · delts" },
-  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "Romanian deadlift · front squat · glutes · hamstrings" },
+  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "RDL · quad-focused squat · glutes · hamstrings" },
   { id: "u2", d: 4, name: "Upper 2", c: "--d4", focus: "Overhead press · pull-ups · chest · arms" },
   { id: "l3", d: 5, name: "Lower 3", c: "--d5", focus: "Squat volume · lunges · glutes · abs" },
   { id: "u3", d: 6, name: "Upper 3", c: "--d6", focus: "Incline press · pull-ups · back · triceps" },

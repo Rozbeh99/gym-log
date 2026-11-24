@@ -419,23 +419,20 @@ function addAssisted() {
     m[2] = own ? [...add, ...m[2]] : [...m[2], ...add];
   }
 }
-// No deadlifts of any kind (Rozbeh's call). Every deadlift in the program becomes a lift for the same muscles,
-// and deadlifts are taken out of every swap and weak-point list. This runs on the built-in program and on
+// No conventional or sumo deadlifts (Rozbeh's call). Stiff-leg and Romanian deadlifts are fine. Each real
+// deadlift in the program becomes a Romanian deadlift, which trains the same glutes, hamstrings and back, and
+// real deadlifts are taken out of every swap and weak-point list. This runs on the built-in program and on
 // imported files alike. Rows keep their exercise id, so sessions already logged keep showing what was done.
-const DEADLIFT = /dead-?lift|\bs?RDLs?\b|\bSLDL\b|block pull|rack pull/i;
+const DEADLIFT = { test: n => /dead-?lift|block pull|rack pull/i.test(n || "") && !/stiff|romanian|\bRDL|single-leg/i.test(n || "") };
+const RDL = { name: "Barbell RDL", photo: "", video: "", swaps: ["Dumbbell RDL", "Barbell 45° Hyperextension", "Barbell Hip Thrust"],
+  note: "Soft knees, push your hips back until you feel a deep hamstring stretch, bar close to your legs, back neutral" };
 const NO_DL = {
-  // Lower 2's main lift: a heavy back extension for glutes, hamstrings and lower back (hip thrusts are already on that day).
-  deadlift: { name: "Barbell 45° Hyperextension", photo: "Hyperextensions_Back_Extensions", video: "GpG21_BpEfs", reps: "8", rest: [120, 180],
-    swaps: ["DB 45° Hyperextension", "Barbell Hip Thrust", "Reverse Hyper", "Glute-Ham Raise"],
-    note: "Hold a plate or bar to your chest, hinge at the hips, squeeze your glutes to come up. Back neutral, no hyperextending at the top" },
-  sldl: { name: "Seated Leg Curl", photo: "Seated_Leg_Curl", video: "ELOCsoDSmrg",
-    swaps: ["Lying Leg Curl", "Sliding Leg Curl", "Glute-Ham Raise"],
-    note: "Lean your torso forward to stretch the hamstrings, take 3 seconds on the way down" },
-  deficitdl: { name: "Lying Leg Curl", photo: "Lying_Leg_Curls", video: "1Tq3QdYUuHs", reps: "10",
-    swaps: ["Seated Leg Curl", "Sliding Leg Curl", "Glute-Ham Raise"],
-    note: "Keep your hips down on the pad, control the way down" },
+  // Lower 2's main lift: same sets, 8 reps by effort instead of 5 at a % of your deadlift max.
+  deadlift: { ...RDL, reps: "8", rest: [120, 180] },
+  // Lower 1, weeks 4-6.
+  deficitdl: { ...RDL },
 };
-const NO_DL_OTHER = { name: "Barbell 45° Hyperextension", photo: "Hyperextensions_Back_Extensions", video: "GpG21_BpEfs", reps: "10", swaps: ["DB 45° Hyperextension", "Reverse Hyper", "Glute-Ham Raise"], note: "Squeeze your glutes to come up" };
+const NO_DL_OTHER = { ...RDL };
 // A % of one-rep max means nothing on the new lift, so it becomes an RPE target of similar effort.
 const pctToRpe = l => /%$/.test(l) ? (parseFloat(l) >= 85 ? "9" : "8") : l;
 function dropDeadlifts(p) {
@@ -500,9 +497,9 @@ const importCard = () => `<div class="hero" style="--c:var(--amber)"><div><div c
 
 // Six training days in program order. A program week is the days in SPLITS for your chosen split, in sequence.
 const DAYDEF = [
-  { id: "l1", d: 1, name: "Lower 1", c: "--d1", focus: "Squat · quads · hamstrings · calves · abs" },
+  { id: "l1", d: 1, name: "Lower 1", c: "--d1", focus: "Squat · hinge · quads · calves · abs" },
   { id: "u1", d: 2, name: "Upper 1", c: "--d2", focus: "Bench press · lats · rows · delts" },
-  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "Back extension · front squat · glutes · hamstrings" },
+  { id: "l2", d: 3, name: "Lower 2", c: "--d3", focus: "Romanian deadlift · front squat · glutes · hamstrings" },
   { id: "u2", d: 4, name: "Upper 2", c: "--d4", focus: "Overhead press · pull-ups · chest · arms" },
   { id: "l3", d: 5, name: "Lower 3", c: "--d5", focus: "Squat volume · lunges · glutes · abs" },
   { id: "u3", d: 6, name: "Upper 3", c: "--d6", focus: "Incline press · pull-ups · back · triceps" },
